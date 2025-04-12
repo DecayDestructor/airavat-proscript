@@ -86,12 +86,10 @@ const Login = () => {
     <div className="flex h-screen">
       {/* Left Panel - Login Form */}
       <div className="w-1/2 bg-white p-8 flex items-center justify-center">
-        <div className="w-full max-w-md bg-white rounded-lg p-6">
+        <div className="w-full max-w-md bg-white rounded-lg p-6 border-2 border-teal-500 shadow-lg">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-blue-600">Student Account</h2>
-            <Link to="/" className="text-blue-600 hover:text-blue-800">
-              Back
-            </Link>
+            <h2 className="text-2xl font-bold text-teal-600">Doctor Account</h2>
+           
           </div>
 
           {/* Tabs */}
@@ -99,7 +97,7 @@ const Login = () => {
             <button
               className={`py-2 px-4 w-1/2 text-center font-medium ${
                 activeTab === 'login'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  ? 'text-teal-600 border-b-2 border-teal-600'
                   : 'text-gray-500'
               }`}
               onClick={() => setActiveTab('login')}
@@ -109,7 +107,7 @@ const Login = () => {
             <button
               className={`py-2 px-4 w-1/2 text-center font-medium ${
                 activeTab === 'signup'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  ? 'text-teal-600 border-b-2 border-teal-600'
                   : 'text-gray-500'
               }`}
               onClick={() => setActiveTab('signup')}
@@ -170,7 +168,7 @@ const Login = () => {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     required
                   />
                 </div>
@@ -192,7 +190,7 @@ const Login = () => {
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
-                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     required
                   />
                   <button
@@ -217,14 +215,14 @@ const Login = () => {
               {/* Sign In Button */}
               <button
                 type="submit"
-                className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                className="w-full py-3 px-4 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
               >
                 Sign In
               </button>
 
               {/* Forgot Password */}
               <div className="text-center mt-4">
-                <a href="#" className="text-blue-600 hover:text-blue-800 text-sm">
+                <a href="#" className="text-teal-600 hover:text-teal-800 text-sm">
                   Forgot password?
                 </a>
               </div>
@@ -234,7 +232,7 @@ const Login = () => {
           {/* Sign Up Form (will be shown when activeTab is 'signup') */}
           {activeTab === 'signup' && (
             <form onSubmit={handleSubmit}>
-              {/* Similar structure as login form but with sign up fields */}
+             
               <button
                 type="button"
                 className="w-full flex items-center justify-center py-2 px-4 mb-6 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50"
@@ -280,7 +278,7 @@ const Login = () => {
                   <input
                     type="email"
                     name="email"
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     required
                   />
                 </div>
@@ -300,7 +298,7 @@ const Login = () => {
                   <input
                     type={showPassword ? "text" : "password"}
                     name="password"
-                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     required
                   />
                   <button
@@ -336,7 +334,7 @@ const Login = () => {
                   <input
                     type={showPassword ? "text" : "password"}
                     name="confirmPassword"
-                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     required
                   />
                 </div>
@@ -345,7 +343,7 @@ const Login = () => {
               {/* Sign Up Button */}
               <button
                 type="submit"
-                className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                className="w-full py-3 px-4 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
               >
                 Sign Up
               </button>
@@ -355,31 +353,70 @@ const Login = () => {
       </div>
       
       {/* Right Panel - Info and Features */}
-      <div className="w-1/2 bg-blue-600 text-white p-12 flex flex-col">
-        <div className="flex-1">
-          <h1 className="text-5xl font-bold mb-4">ProScript</h1>
-          <div className="h-16">
-            <p className="text-2xl font-light">{currentText}<span className="animate-pulse">|</span></p>
-          </div>
-          
-          <div className="mt-16 grid gap-6">
-            {features.map((feature, index) => (
-              <div key={index} className="bg-white bg-opacity-10 p-6 rounded-lg">
-                <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
-                <p className="text-gray-100">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-        
-        <div className="mt-auto pt-8">
-          <p className="text-sm text-gray-200">
-            © 2025 ProScript. All rights reserved.
-          </p>
-        </div>
+<div className="w-1/2 bg-teal-600 text-white p-12 flex flex-col">
+  <div className="flex-1">
+    {/* Logo and Title */}
+    <div className="flex items-center mb-4">
+      <div className="mr-4 bg-white bg-opacity-20 p-3 rounded-full">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+        </svg>
       </div>
+      <h1 className="text-5xl font-bold">ProScript</h1>
     </div>
-  );
-};
+    
+    <div className="h-16">
+      <p className="text-2xl font-light">{currentText}<span className="animate-pulse">|</span></p>
+    </div>
+    
+    <div className="mt-16 grid gap-6">
+      {features.map((feature, index) => (
+        <div key={index} className="bg-white bg-opacity-10 p-6 rounded-lg">
+          <div className="flex items-start">
+            <div className="bg-white bg-opacity-20 p-2 rounded-lg mr-4">
+              {index === 0 ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  {/* Prescription/Secure Document Icon */}
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              ) : index === 1 ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  {/* Hospital/Medical Institution Icon */}
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  {/* Medical Cross/Health Icon */}
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              )}
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
+              <p className="text-gray-100">{feature.description}</p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+  
+  <div className="mt-auto pt-8 flex items-center justify-between">
+    <p className="text-sm text-gray-200">
+      © 2025 ProScript. All rights reserved.
+    </p>
+    <div className="flex items-center text-sm text-gray-200">
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      Secure & HIPAA Compliant
+    </div>
+  </div>
+</div>
+</div>
+  )
+}
 
 export default Login;
+
+
