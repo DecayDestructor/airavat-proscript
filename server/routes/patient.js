@@ -279,42 +279,41 @@ Be specific about medications, dosages, effectiveness, and side effects. If ther
 }
 
 // Express route implementation
-router.post('/prescription-analysis', async (req, res) => {
+router.post('/prescription-analysis/:email', async (req, res) => {
   const { currentPrescription, symptoms, diagnosis } = req.body
-  const doctorId = req.query.doctorId // Getting doctorId from query parameters
+  const { email } = req.params
 
-  if (!doctorId || !currentPrescription || !symptoms || !diagnosis) {
+  if (!email || !currentPrescription || !symptoms || !diagnosis) {
     return res.status(400).json({
       error:
-        'Doctor ID, current prescription, symptoms, and diagnosis are required',
+        'Patient email, current prescription, symptoms, and diagnosis are required',
     })
   }
 
   try {
-    // Find previous patient records with similar symptoms/diagnosis
+    // Find this patient's own previous records with similar symptoms/diagnosis
     const similarRecords = await PatientHistory.find({
-      doctor: doctorId,
+      patient_email: email,
       $or: [
         { symptoms: { $in: symptoms } },
         { diagnosis: { $regex: diagnosis, $options: 'i' } },
       ],
       completed: true,
-      effectiveness: { $gte: 3 }, // Only consider somewhat effective treatments
+      effectiveness: { $gte: 3 },
     })
       .sort({ effectiveness: -1 })
       .limit(3)
 
-    // If no similar records found
-    if (similarRecords.length === 0) {
+    if (!similarRecords.length) {
       return res.json({
-        message: 'No similar historical prescriptions found for comparison',
-        recommendation: null,
+        message: 'No similar historical prescriptions found for this patient',
+        ai_insight: null,
+        similar_cases: [],
       })
     }
 
-    // Format the data for the AI
+    // Format the data for AI
     const formattedRecords = similarRecords.map((record) => ({
-      patient_name: record.name,
       symptoms: record.symptoms,
       diagnosis: record.diagnosis,
       medication: record.medication.map((med) => ({
@@ -326,14 +325,12 @@ router.post('/prescription-analysis', async (req, res) => {
       notes: record.notes || '',
     }))
 
-    // Format current prescription
     const formattedCurrentPrescription = {
-      symptoms: symptoms,
-      diagnosis: diagnosis,
+      symptoms,
+      diagnosis,
       medication: currentPrescription,
     }
 
-    // Generate insight
     const insight = await generatePrescriptionInsight(
       formattedCurrentPrescription,
       formattedRecords
@@ -344,7 +341,7 @@ router.post('/prescription-analysis', async (req, res) => {
       ai_insight: insight,
     })
   } catch (err) {
-    console.error('Error analyzing prescription:', err)
+    console.error('Error analyzing patient prescription:', err)
     res.status(500).json({ error: 'Server error' })
   }
 })
