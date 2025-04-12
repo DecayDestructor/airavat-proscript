@@ -92,7 +92,7 @@ router.post('/create-prescript', async (req, res) => {
       medication,
       medication_end_date,
       notes,
-      side_effects: side_effects || [],
+      side_effects: [],
     })
 
     await newPrescript.save()
