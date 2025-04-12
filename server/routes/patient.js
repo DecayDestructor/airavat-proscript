@@ -51,6 +51,7 @@ router.post('/create-doctor', async (req, res) => {
       email_id: email,
       Hospital: hospital_id,
     })
+
     await newDoctor.save()
     res.status(201).json({ message: 'Doctor created successfully' })
   } catch (err) {
@@ -77,6 +78,8 @@ router.post('/create-prescript', async (req, res) => {
       medication_end_date,
       notes,
       side_effects,
+      allergy,
+      frequency,
     } = req.body
     // Combine medicines and dosages into medication array
     const medication = medicines.map((medicine, index) => ({
@@ -97,6 +100,8 @@ router.post('/create-prescript', async (req, res) => {
       side_effects: [],
       patient_email: email,
       patient_phone: phone,
+      frequency,
+      allergy,
     })
 
     await newPrescript.save()
