@@ -67,6 +67,10 @@ const PatientHistorySchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  effectiveness: {
+    type: Number,
+    default: 0,
+  },
 })
 
 module.exports = mongoose.model('PatientHistory', PatientHistorySchema)

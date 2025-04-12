@@ -113,10 +113,16 @@ router.post('/create-prescript', async (req, res) => {
 router.put('/complete-prescript/:id', async (req, res) => {
   try {
     const { id } = req.params
-    const { note, side_effects } = req.body
+    const { note, side_effects, effectiveness } = req.body
+    const boundedEffectiveness = Math.min(Math.max(effectiveness, 0), 10)
     const updatedPrescript = await PatientHistory.findByIdAndUpdate(
       id,
-      { completed: true, notes: note || '', side_effects: side_effects || [] },
+      {
+        completed: true,
+        notes: note || '',
+        side_effects: side_effects || [],
+        effectiveness: boundedEffectiveness,
+      },
       { new: true }
     )
     res.status(200).json(updatedPrescript)
