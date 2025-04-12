@@ -44,6 +44,10 @@ const PatientHistorySchema = new mongoose.Schema({
           type: Number,
           required: true,
         },
+        frequency: {
+          type: Number,
+          required: true,
+        },
       },
     ],
   },
@@ -70,10 +74,6 @@ const PatientHistorySchema = new mongoose.Schema({
   effectiveness: {
     type: Number,
     default: 0,
-  },
-  frequency: {
-    type: Number,
-    default: 1,
   },
   allergy: {
     type: [String],

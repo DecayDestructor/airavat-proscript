@@ -85,6 +85,7 @@ router.post('/create-prescript', async (req, res) => {
     const medication = medicines.map((medicine, index) => ({
       medicine,
       dosage: Math.min(dosages[index], 100),
+      frequency: frequency[index],
     }))
 
     const newPrescript = new PatientHistory({
@@ -100,7 +101,6 @@ router.post('/create-prescript', async (req, res) => {
       side_effects: [],
       patient_email: email,
       patient_phone: phone,
-      frequency,
       allergy,
     })
 
