@@ -76,7 +76,6 @@ router.post('/create-prescript', async (req, res) => {
       notes,
       side_effects,
     } = req.body
-
     // Combine medicines and dosages into medication array
     const medication = medicines.map((medicine, index) => ({
       medicine,
@@ -86,14 +85,14 @@ router.post('/create-prescript', async (req, res) => {
     const newPrescript = new PatientHistory({
       name,
       age,
-      sex,
+      sex: sex.toLowerCase(),
       doctor,
       symptoms,
       diagnosis,
       medication,
       medication_end_date,
       notes,
-      side_effects,
+      side_effects: side_effects || [],
     })
 
     await newPrescript.save()
@@ -106,4 +105,102 @@ router.post('/create-prescript', async (req, res) => {
   }
 })
 
+// route to mark a prescription as completed
+router.put('/complete-prescript/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    const { note, side_effects } = req.body
+    const updatedPrescript = await PatientHistory.findByIdAndUpdate(
+      id,
+      { completed: true, notes: note || '', side_effects: side_effects || [] },
+      { new: true }
+    )
+    res.status(200).json(updatedPrescript)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: 'Server error' })
+  }
+})
+
+//route to get all prescriptions for a particular patient
+router.get('/get-prescripts/:name/:age/:sex', async (req, res) => {
+  try {
+    const { name, age, sex } = req.params
+    const prescripts = await PatientHistory.find({
+      name,
+      age,
+      sex,
+    })
+    res.status(200).json(prescripts)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: 'Server error' })
+  }
+})
+
+//route to get all prescripts by one doctor
+router.get('/get-prescripts-by-doctor/:email', async (req, res) => {
+  try {
+    const { email } = req.params
+    // console.log(email)
+    const doctor = await Doctor.findOne({ email_id: email })
+    // console.log(doctor)
+    const prescripts = await PatientHistory.find({ doctor: doctor._id })
+    res.status(200).json(prescripts)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: 'Server error' })
+  }
+})
+
+//route to get one prescript by id
+router.get('/get-prescript/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    const prescript = await PatientHistory.findById(id)
+    res.status(200).json(prescript)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: 'Server error' })
+  }
+})
+
+//route to get prescripts not expired sorted by date by a doctor
+router.get('/get-prescripts-not-expired-by-doctor/:email', async (req, res) => {
+  try {
+    const { email } = req.params
+    // console.log(email)
+    const doctor = await Doctor.findOne({ email_id: email })
+    // console.log(doctor)
+
+    const prescripts = await PatientHistory.find({
+      doctor: doctor._id,
+      completed: false,
+    })
+      .sort({ medication_end_date: 1 })
+      .exec()
+    res.status(200).json(prescripts)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: 'Server error' })
+  }
+})
+
+//route to get expired by a doctor
+router.get('/get-expired-prescripts-by-doctor/:email', async (req, res) => {
+  try {
+    const { email } = req.params
+    const doctor = await Doctor.findOne({ email_id: email })
+    const prescripts = await PatientHistory.find({
+      doctor: doctor._id,
+      completed: false,
+    })
+      .sort({ medication_end_date: -1 })
+      .exec()
+    res.status(200).json(prescripts)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: 'Server error' })
+  }
+})
 module.exports = router

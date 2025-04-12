@@ -55,6 +55,10 @@ const PatientHistorySchema = new mongoose.Schema({
   side_effects: {
     type: [String],
   },
+  completed: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 module.exports = mongoose.model('PatientHistory', PatientHistorySchema)
