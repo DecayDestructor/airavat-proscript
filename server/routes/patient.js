@@ -80,6 +80,7 @@ router.post('/create-prescript', async (req, res) => {
       side_effects,
       allergy,
       frequency,
+      pregnant,
     } = req.body
     // Combine medicines and dosages into medication array
     const medication = medicines.map((medicine, index) => ({
@@ -102,6 +103,7 @@ router.post('/create-prescript', async (req, res) => {
       patient_phone: phone,
       frequency,
       allergy,
+      pregnant,
     })
 
     await newPrescript.save()

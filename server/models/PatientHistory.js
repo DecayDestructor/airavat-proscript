@@ -78,6 +78,10 @@ const PatientHistorySchema = new mongoose.Schema({
   allergy: {
     type: [String],
   },
+  pregnant: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 module.exports = mongoose.model('PatientHistory', PatientHistorySchema)
