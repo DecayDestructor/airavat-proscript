@@ -39,7 +39,7 @@ function App() {
           <Route path="/prescription/:id" element={<Prescription />} />
           <Route path="/doctor-verification" element={<DoctorVerification />} />
           <Route
-            path="/expired-prescription"
+            path="/expired-prescriptions"
             element={<ExpiredPrescription />}
           />
         </Routes>

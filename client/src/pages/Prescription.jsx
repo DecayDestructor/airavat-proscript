@@ -1,4 +1,4 @@
-// PrescriptionDetails.jsx
+// Prescription.jsx
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import axios from 'axios'
@@ -14,6 +14,7 @@ const Prescription = () => {
   const [error, setError] = useState(null)
   const [completionNote, setCompletionNote] = useState('')
   const [sideEffects, setSideEffects] = useState('')
+  const [effectiveness, setEffectiveness] = useState(7) // Default value of 7 (good)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
 
@@ -53,6 +54,7 @@ const Prescription = () => {
       await axios.put(`http://localhost:3000/complete-prescript/${id}`, {
         note: completionNote,
         side_effects: sideEffectsArray,
+        effectiveness: parseInt(effectiveness) // Include effectiveness rating
       })
 
       setSuccess(true)
@@ -217,30 +219,32 @@ const Prescription = () => {
                       </p>
                     </div>
 
-                    {/* Contact Information Section */}
-                    <div className="md:col-span-2">
-                      <h3 className="text-base font-medium text-gray-900 mb-2">
-                        Contact Information
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">
-                            Phone
-                          </p>
-                          <p className="text-gray-800">
-                            {prescription.patient_phone || 'Not provided'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">
-                            Email
-                          </p>
-                          <p className="text-gray-800">
-                            {prescription.patient_email || 'Not provided'}
-                          </p>
+                    {/* Contact Information Section (only if available) */}
+                    {(prescription.patient_phone || prescription.patient_email) && (
+                      <div className="md:col-span-2">
+                        <h3 className="text-base font-medium text-gray-900 mb-2">
+                          Contact Information
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">
+                              Phone
+                            </p>
+                            <p className="text-gray-800">
+                              {prescription.patient_phone || 'Not provided'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">
+                              Email
+                            </p>
+                            <p className="text-gray-800">
+                              {prescription.patient_email || 'Not provided'}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
 
                     <div className="md:col-span-2">
                       <h3 className="text-base font-medium text-gray-900 mb-2">
@@ -332,6 +336,39 @@ const Prescription = () => {
                             onChange={(e) => setCompletionNote(e.target.value)}
                           ></textarea>
                         </div>
+
+                        {/* Effectiveness Rating */}
+                        <div>
+                          <label
+                            htmlFor="effectiveness"
+                            className="block text-sm font-medium text-gray-700 mb-1"
+                          >
+                            Treatment Effectiveness (0-10) <span className="text-red-500">*</span>
+                          </label>
+                          <div className="mt-1">
+                            <div className="flex items-center">
+                              <input
+                                type="range"
+                                id="effectiveness"
+                                name="effectiveness"
+                                min="0"
+                                max="10"
+                                step="1"
+                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                value={effectiveness}
+                                onChange={(e) => setEffectiveness(e.target.value)}
+                              />
+                              <span className="ml-3 text-sm font-medium text-gray-700 w-8">
+                                {effectiveness}
+                              </span>
+                            </div>
+                            <div className="flex justify-between text-xs text-gray-500 px-1 mt-1">
+                              <span>Not effective</span>
+                              <span>Very effective</span>
+                            </div>
+                          </div>
+                        </div>
+
                         <div>
                           <label
                             htmlFor="sideEffects"
@@ -419,13 +456,40 @@ const Prescription = () => {
                         </p>
                       </div>
 
+                      {/* Display effectiveness rating if available */}
+                      {prescription.effectiveness !== undefined && (
+                        <div>
+                          <h3 className="text-base font-medium text-gray-900 mb-2">
+                            Treatment Effectiveness
+                          </h3>
+                          <div className="bg-white p-4 rounded-lg border border-gray-200">
+                            <div className="flex items-center">
+                              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                                <div 
+                                  className="bg-teal-600 h-2.5 rounded-full" 
+                                  style={{ width: `${(prescription.effectiveness / 10) * 100}%` }}
+                                ></div>
+                              </div>
+                              <span className="ml-3 font-medium">{prescription.effectiveness}/10</span>
+                            </div>
+                            <p className="mt-1 text-sm text-gray-500">
+                              {prescription.effectiveness >= 8 
+                                ? 'Very effective treatment'
+                                : prescription.effectiveness >= 5
+                                  ? 'Moderately effective treatment'
+                                  : 'Less effective treatment'}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
                       {prescription.side_effects &&
                         prescription.side_effects.length > 0 && (
-                          <div className="md:col-span-2">
+                          <div className={prescription.effectiveness !== undefined ? '' : 'md:col-span-2'}>
                             <h3 className="text-base font-medium text-gray-900 mb-2">
                               Side Effects Reported
                             </h3>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-2 bg-white p-4 rounded-lg border border-gray-200">
                               {prescription.side_effects.map(
                                 (effect, index) => (
                                   <span
