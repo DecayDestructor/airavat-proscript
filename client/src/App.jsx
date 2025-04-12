@@ -11,6 +11,14 @@ import DoctorVerification from './pages/VerifyDoctor'
 import Dashboard from './pages/Dashboard'
 import CreatePrescription from './pages/CreatePrescription'
 import OngoingPrescriptions from './pages/OngoingPrescription'
+import Prescription from './pages/Prescription'
+import ExpiredPrescription from './pages/ExpiredPrescription'
+
+import Login from './pages/Login'
+import DoctorVerification from './pages/VerifyDoctor'
+import Dashboard from './pages/Dashboard'
+import CreatePrescription from './pages/CreatePrescription'
+import OngoingPrescriptions from './pages/OngoingPrescription'
 
 function App() {
   return (
@@ -34,7 +42,12 @@ function App() {
             {' '}
           </Route>
 
+          <Route path="/prescription/:id" element={<Prescription />} />
           <Route path="/doctor-verification" element={<DoctorVerification />} />
+          <Route
+            path="/expired-prescription"
+            element={<ExpiredPrescription />}
+          />
         </Routes>
       </Router>
     </div>
