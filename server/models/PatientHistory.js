@@ -13,6 +13,14 @@ const PatientHistorySchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  patient_email: {
+    type: String,
+    required: true,
+  },
+  patient_phone: {
+    type: String,
+    required: true,
+  },
   doctor: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Doctor',

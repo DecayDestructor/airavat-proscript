@@ -68,6 +68,8 @@ router.post('/create-prescript', async (req, res) => {
       age,
       sex,
       doctor,
+      phone,
+      email,
       symptoms,
       diagnosis,
       medicines,
@@ -93,6 +95,8 @@ router.post('/create-prescript', async (req, res) => {
       medication_end_date,
       notes,
       side_effects: [],
+      patient_email: email,
+      patient_phone: phone,
     })
 
     await newPrescript.save()
@@ -123,13 +127,11 @@ router.put('/complete-prescript/:id', async (req, res) => {
 })
 
 //route to get all prescriptions for a particular patient
-router.get('/get-prescripts/:name/:age/:sex', async (req, res) => {
+router.get('/get-prescripts/:email', async (req, res) => {
   try {
-    const { name, age, sex } = req.params
+    const { email } = req.params
     const prescripts = await PatientHistory.find({
-      name,
-      age,
-      sex,
+      patient_email: email,
     })
     res.status(200).json(prescripts)
   } catch (err) {
