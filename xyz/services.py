@@ -81,7 +81,7 @@ def dosage_check(index, prescription, ade):
                     dosage_flag.append(0)
                 else:
                     dosage_flag.append(1)
-                    message.append(f"High dosage {drug_name}, recommended dosage: {drug_dosage}")
+                    message.append(f"High dosage for {drug_name}, recommended dosage: {drug_dosage}")
             else:
                 dosage_flag.append(1)
         else:
@@ -116,7 +116,7 @@ def frequency_check(index, prescription, ade):
                     frequency_flag.append(0)
                 else:
                     frequency_flag.append(1)
-                    message.append(f"High frequency {drug_name}, recommended frequency: {drug_frequency} times a day")
+                    message.append(f"High frequency for {drug_name}, recommended frequency: {drug_frequency} times a day")
             else:
                 frequency_flag.append(1)
         else:

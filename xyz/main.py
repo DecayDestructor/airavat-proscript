@@ -21,7 +21,7 @@ ade, prescription = load_data()
 @app.post("/check-prescription", response_model=PrescriptionResponse)
 async def check_prescription(request: PrescriptionRequest):
     """
-    Endpoint to check a prescription for various flags.
+    Endpoint to check a prescription for various flags and return messages.
     """
     try:
         # Add the new prescription row to the DataFrame
@@ -39,17 +39,28 @@ async def check_prescription(request: PrescriptionRequest):
         prescription.loc[len(prescription)] = new_row
         index = len(prescription) - 1
 
-        # Perform checks
-        age_flag, _ = age_check(index, prescription, ade)
-        sex_flag, _ = sex_check(index, prescription, ade)
-        dosage_flag, _ = dosage_check(index, prescription, ade)
-        frequency_flag, _ = frequency_check(index, prescription, ade)
-        drugs_flag, _ = drugs_check(index, prescription, ade)
-        pregnancy_flag, _ = pregnancy_check(index, prescription, ade)
-        allergy_flag, _ = allergy_check(index, prescription, ade)
+        # Perform checks and collect flags and messages
+        age_flag, age_messages = age_check(index, prescription, ade)
+        sex_flag, sex_messages = sex_check(index, prescription, ade)
+        dosage_flag, dosage_messages = dosage_check(index, prescription, ade)
+        frequency_flag, frequency_messages = frequency_check(index, prescription, ade)
+        drugs_flag, drugs_messages = drugs_check(index, prescription, ade)
+        pregnancy_flag, pregnancy_messages = pregnancy_check(index, prescription, ade)
+        allergy_flag, allergy_messages = allergy_check(index, prescription, ade)
         flag = check(index, prescription)
 
-        # Return response
+        # Aggregate all messages
+        messages = (
+            age_messages
+            + sex_messages
+            + dosage_messages
+            + frequency_messages
+            + drugs_messages
+            + pregnancy_messages
+            + allergy_messages
+        )
+
+        # Return response with flags and messages
         return PrescriptionResponse(
             age_flag=age_flag,
             sex_flag=sex_flag,
@@ -58,7 +69,8 @@ async def check_prescription(request: PrescriptionRequest):
             drugs_flag=drugs_flag,
             pregnancy_flag=pregnancy_flag,
             allergy_flag=allergy_flag,
-            flag=flag
+            flag=flag,
+            messages=messages  # Include aggregated messages
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

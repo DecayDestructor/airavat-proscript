@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import List
 
 class PrescriptionRequest(BaseModel):
     patient_name: str
@@ -11,6 +12,7 @@ class PrescriptionRequest(BaseModel):
     frequency: str
     pregnancy_category: int
 
+
 class PrescriptionResponse(BaseModel):
     age_flag: float
     sex_flag: float
@@ -20,3 +22,4 @@ class PrescriptionResponse(BaseModel):
     pregnancy_flag: float
     allergy_flag: float
     flag: float
+    messages: List[str]  # Optional: If you added this field for messages
