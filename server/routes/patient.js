@@ -4,7 +4,7 @@ const router = express.Router()
 const PatientHistory = require('../models/PatientHistory.js')
 const Doctor = require('../models/DoctorSchema.js')
 const Hospital = require('../models/HospitalSchema.js')
-
+const Fuse = require('fuse.js')
 router.post('/create-hospital', async (req, res) => {
   try {
     const { name } = req.body
@@ -201,7 +201,7 @@ router.get('/get-expired-prescripts-by-doctor/:email', async (req, res) => {
     const doctor = await Doctor.findOne({ email_id: email })
     const prescripts = await PatientHistory.find({
       doctor: doctor._id,
-      completed: false,
+      completed: true,
     })
       .sort({ medication_end_date: -1 })
       .exec()
@@ -211,4 +211,142 @@ router.get('/get-expired-prescripts-by-doctor/:email', async (req, res) => {
     res.status(500).json({ message: 'Server error' })
   }
 })
+
+const { GoogleGenAI } = require('@google/genai')
+
+// Function to generate prescription insights using Google's Generative AI
+async function generatePrescriptionInsight(
+  currentPrescription,
+  historicalCases
+) {
+  // Initialize Google Gen AI with your API key
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+
+  // Select the model
+  const model = ai.models.generateContent
+
+  // Create a detailed prompt
+  const prompt = `
+You are an AI medical assistant helping a doctor make informed decisions.
+
+CURRENT PRESCRIPTION:
+Symptoms: ${currentPrescription.symptoms.join(', ')}
+Diagnosis: ${currentPrescription.diagnosis}
+Medications: 
+${currentPrescription.medication
+  .map((m) => `- ${m.medicine} (${m.dosage}mg)`)
+  .join('\n')}
+
+HISTORICAL CASES WITH SIMILAR SYMPTOMS/DIAGNOSIS:
+${historicalCases
+  .map(
+    (case_, i) => `
+CASE ${i + 1}:
+Patient: ${case_.patient_name}
+Symptoms: ${case_.symptoms.join(', ')}
+Diagnosis: ${case_.diagnosis}
+Medications: 
+${case_.medication.map((m) => `- ${m.medicine} (${m.dosage}mg)`).join('\n')}
+Effectiveness (scale 1-10): ${case_.effectiveness}
+Side Effects: ${
+      case_.side_effects.length > 0
+        ? case_.side_effects.join(', ')
+        : 'None reported'
+    }
+Notes: ${case_.notes || 'None'}
+`
+  )
+  .join('\n')}
+
+Based on the above information, provide a concise, professional insight that follows this format:
+"You have given similar medication to patients with similar symptoms in the past, and it had [summarize effectiveness and outcomes]. [Add any relevant observations about dosage differences or side effects]."
+
+Be specific about medications, dosages, effectiveness, and side effects. If there are important differences, mention those too.
+`
+
+  try {
+    // Generate content using the model
+    const response = await model({
+      model: 'gemini-2.0-flash',
+      contents: prompt,
+    })
+
+    return response.text
+  } catch (error) {
+    console.error('Error calling Google Generative AI:', error)
+    return 'Unable to analyze prescription history due to an AI service error.'
+  }
+}
+
+// Express route implementation
+router.post('/prescription-analysis', async (req, res) => {
+  const { currentPrescription, symptoms, diagnosis } = req.body
+  const doctorId = req.query.doctorId // Getting doctorId from query parameters
+
+  if (!doctorId || !currentPrescription || !symptoms || !diagnosis) {
+    return res.status(400).json({
+      error:
+        'Doctor ID, current prescription, symptoms, and diagnosis are required',
+    })
+  }
+
+  try {
+    // Find previous patient records with similar symptoms/diagnosis
+    const similarRecords = await PatientHistory.find({
+      doctor: doctorId,
+      $or: [
+        { symptoms: { $in: symptoms } },
+        { diagnosis: { $regex: diagnosis, $options: 'i' } },
+      ],
+      completed: true,
+      effectiveness: { $gte: 3 }, // Only consider somewhat effective treatments
+    })
+      .sort({ effectiveness: -1 })
+      .limit(3)
+
+    // If no similar records found
+    if (similarRecords.length === 0) {
+      return res.json({
+        message: 'No similar historical prescriptions found for comparison',
+        recommendation: null,
+      })
+    }
+
+    // Format the data for the AI
+    const formattedRecords = similarRecords.map((record) => ({
+      patient_name: record.name,
+      symptoms: record.symptoms,
+      diagnosis: record.diagnosis,
+      medication: record.medication.map((med) => ({
+        medicine: med.medicine,
+        dosage: med.dosage,
+      })),
+      effectiveness: record.effectiveness,
+      side_effects: record.side_effects || [],
+      notes: record.notes || '',
+    }))
+
+    // Format current prescription
+    const formattedCurrentPrescription = {
+      symptoms: symptoms,
+      diagnosis: diagnosis,
+      medication: currentPrescription,
+    }
+
+    // Generate insight
+    const insight = await generatePrescriptionInsight(
+      formattedCurrentPrescription,
+      formattedRecords
+    )
+
+    res.json({
+      similar_cases: formattedRecords,
+      ai_insight: insight,
+    })
+  } catch (err) {
+    console.error('Error analyzing prescription:', err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
 module.exports = router
