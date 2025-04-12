@@ -13,6 +13,9 @@ import CreatePrescription from './pages/CreatePrescription'
 import OngoingPrescriptions from './pages/OngoingPrescription'
 import Prescription from './pages/Prescription'
 import ExpiredPrescription from './pages/ExpiredPrescription'
+import PatientHistory from './pages/PatientHistory'
+import PatientList from './pages/PatientList'
+
 
 function App() {
   return (
@@ -42,6 +45,9 @@ function App() {
             path="/expired-prescriptions"
             element={<ExpiredPrescription />}
           />
+          <Route path="/patient-list" element={<PatientList />} />
+          <Route path="/patient-history/:email" element={<PatientHistory />} />
+          
         </Routes>
       </Router>
     </div>
