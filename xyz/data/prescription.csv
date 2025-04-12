@@ -1,1 +1,1 @@
-patient_name,age,sex,allergy,medical_condition,drugs,dosage,frequency,pregnancy_category,age_flag,sex_flag,allergy_flag,drugs_flag,dosage_flag,frequency_flag,pregnancy_flag
+patient_name,age,sex,allergy,medical_condition,drugs,dosage,frequency,pregnancy_category,age_flag,sex_flag,allergy_flag,drugs_flag,dosage_flag,frequency_flag,pregnancy_flag,flag
