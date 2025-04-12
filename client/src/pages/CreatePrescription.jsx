@@ -50,56 +50,97 @@ const CreatePrescription = () => {
   }
 
   // Request prescription analysis
-  const handleAnalyzeClick = async () => {
-    if (!formData.email || !formData.symptoms || !formData.diagnosis || !formData.medicines) {
-      setError('Please fill in patient email, symptoms, diagnosis, and medicines before analyzing')
-      return
-    }
-
-    setAnalyzing(true)
-    setError(null)
-
-    try {
-      const symptoms = typeof formData.symptoms === 'string'
-        ? formData.symptoms.split(',').map((s) => s.trim())
-        : formData.symptoms
-
-      const medicines = typeof formData.medicines === 'string'
-        ? formData.medicines.split(',').map((m) => m.trim())
-        : formData.medicines
-
-      const dosages = typeof formData.dosages === 'string'
-        ? formData.dosages.split(',').map((d) => d.trim()).map(Number)
-        : formData.dosages
-
-      // Create medication array for analysis
-      const currentPrescription = medicines.map((medicine, index) => ({
-        medicine,
-        dosage: dosages[index] || 0,
-      }))
-
-      const response = await axios.post(
-        `http://localhost:3000/prescription-analysis/${formData.email}`,
-        {
-          currentPrescription,
-          symptoms,
-          diagnosis: formData.diagnosis
-        }
-      )
-
-      setAnalysisResult(response.data)
-    } catch (err) {
-      console.error('Error analyzing prescription:', err)
-      setError(
-        err.response?.data?.message ||
-        err.message ||
-        'An error occurred while analyzing the prescription'
-      )
-    } finally {
-      setAnalyzing(false)
-    }
+ const handleAnalyzeClick = async () => {
+  if (!formData.email || !formData.symptoms || !formData.diagnosis || !formData.medicines) {
+    setError('Please fill in patient email, symptoms, diagnosis, and medicines before analyzing');
+    return;
   }
 
+  setAnalyzing(true);
+  setError(null);
+  console.log("Starting prescription analysis...");
+
+  try {
+    // Convert input strings to arrays
+    const symptoms = typeof formData.symptoms === 'string'
+      ? formData.symptoms.split(',').map((s) => s.trim())
+      : formData.symptoms;
+
+    const medicines = typeof formData.medicines === 'string'
+      ? formData.medicines.split(',').map((m) => m.trim())
+      : formData.medicines;
+
+    const dosages = typeof formData.dosages === 'string'
+      ? formData.dosages.split(',').map((d) => d.trim()).map(Number)
+      : formData.dosages;
+
+    // Create medication array for analysis
+    const currentPrescription = [];
+    for (let i = 0; i < medicines.length; i++) {
+      currentPrescription.push({
+        medicine: medicines[i],
+        dosage: dosages[i] || 0,
+      });
+    }
+
+    console.log("Sending data to server:", {
+      email: formData.email,
+      currentPrescription,
+      symptoms,
+      diagnosis: formData.diagnosis
+    });
+
+    // Make the API call with explicit URL and error handling
+    const response = await axios.post(
+      `http://localhost:3000/prescription-analysis/${formData.email}`,
+      {
+        currentPrescription,
+        symptoms,
+        diagnosis: formData.diagnosis
+      },
+      {
+        timeout: 10000 // 10 second timeout
+      }
+    );
+
+    console.log("Received analysis response:", response.data);
+    
+    if (response.data) {
+      setAnalysisResult(response.data);
+      // Add a visible notification about the result
+      if (response.data.ai_insight) {
+        alert(`Analysis complete: ${response.data.ai_insight}`);
+      } else {
+        alert("Analysis complete, but no insights were generated.");
+      }
+    } else {
+      setError("Received empty response from analysis server");
+    }
+  } catch (err) {
+    console.error('Error analyzing prescription:', err);
+    
+    // More detailed error logging
+    if (err.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.error("Response error data:", err.response.data);
+      console.error("Response error status:", err.response.status);
+      console.error("Response error headers:", err.response.headers);
+      setError(`Server error (${err.response.status}): ${err.response.data.message || err.response.data}`);
+    } else if (err.request) {
+      // The request was made but no response was received
+      console.error("No response received:", err.request);
+      setError("No response received from server. Please check if the server is running.");
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      console.error("Request setup error:", err.message);
+      setError(`Error: ${err.message}`);
+    }
+  } finally {
+    setAnalyzing(false);
+    console.log("Analysis process completed");
+  }
+};
   // Handle send via email
   const handleSendEmail = () => {
     // This would typically connect to your backend email service
@@ -239,7 +280,7 @@ const CreatePrescription = () => {
 
             {/* AI Analysis Result */}
             {analysisResult && analysisResult.ai_insight && (
-              <div className="mb-4 p-4 bg-blue-50 border border-blue-300 text-blue-800 rounded">
+              <div className="mb-4 p-4 bg-teal-50 border border-teal-300 text-teal-800 rounded">
                 <h3 className="font-bold mb-2">AI Prescription Analysis:</h3>
                 <p>{analysisResult.ai_insight}</p>
                 {analysisResult.similar_cases && analysisResult.similar_cases.length > 0 && (
