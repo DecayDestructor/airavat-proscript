@@ -71,6 +71,13 @@ const PatientHistorySchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  frequency: {
+    type: Number,
+    default: 1,
+  },
+  allergy: {
+    type: [String],
+  },
 })
 
 module.exports = mongoose.model('PatientHistory', PatientHistorySchema)

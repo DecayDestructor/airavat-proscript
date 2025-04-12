@@ -51,6 +51,7 @@ router.post('/create-doctor', async (req, res) => {
       email_id: email,
       Hospital: hospital_id,
     })
+
     await newDoctor.save()
     res.status(201).json({ message: 'Doctor created successfully' })
   } catch (err) {
@@ -77,6 +78,8 @@ router.post('/create-prescript', async (req, res) => {
       medication_end_date,
       notes,
       side_effects,
+      allergy,
+      frequency,
     } = req.body
     // Combine medicines and dosages into medication array
     const medication = medicines.map((medicine, index) => ({
@@ -97,6 +100,8 @@ router.post('/create-prescript', async (req, res) => {
       side_effects: [],
       patient_email: email,
       patient_phone: phone,
+      frequency,
+      allergy,
     })
 
     await newPrescript.save()
@@ -211,72 +216,67 @@ router.get('/get-expired-prescripts-by-doctor/:email', async (req, res) => {
     res.status(500).json({ message: 'Server error' })
   }
 })
-
 const { GoogleGenAI } = require('@google/genai')
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
 
-// Function to generate prescription insights using Google's Generative AI
-async function generatePrescriptionInsight(
+const generatePrescriptionInsight = async (
   currentPrescription,
-  historicalCases
-) {
-  // Initialize Google Gen AI with your API key
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+  pastPrescriptions
+) => {
+  const { symptoms, diagnosis, medication } = currentPrescription
 
-  // Select the model
-  const model = ai.models.generateContent
+  const currentMedText = medication
+    .map((m) => `${m.medicine} (${m.dosage}mg)`)
+    .join(', ')
 
-  // Create a detailed prompt
-  const prompt = `
-You are an AI medical assistant helping a doctor make informed decisions.
-
-CURRENT PRESCRIPTION:
-Symptoms: ${currentPrescription.symptoms.join(', ')}
-Diagnosis: ${currentPrescription.diagnosis}
-Medications: 
-${currentPrescription.medication
-  .map((m) => `- ${m.medicine} (${m.dosage}mg)`)
-  .join('\n')}
-
-HISTORICAL CASES WITH SIMILAR SYMPTOMS/DIAGNOSIS:
-${historicalCases
-  .map(
-    (case_, i) => `
-CASE ${i + 1}:
-Patient: ${case_.patient_name}
-Symptoms: ${case_.symptoms.join(', ')}
-Diagnosis: ${case_.diagnosis}
-Medications: 
-${case_.medication.map((m) => `- ${m.medicine} (${m.dosage}mg)`).join('\n')}
-Effectiveness (scale 1-10): ${case_.effectiveness}
+  const pastText = pastPrescriptions
+    .map(
+      (record, i) => `
+Record ${i + 1}:
+Diagnosis: ${record.diagnosis}
+Medications: ${record.medication
+        .map((m) => `${m.medicine} (${m.dosage}mg)`)
+        .join(', ')}
+Effectiveness: ${record.effectiveness}/10
 Side Effects: ${
-      case_.side_effects.length > 0
-        ? case_.side_effects.join(', ')
-        : 'None reported'
-    }
-Notes: ${case_.notes || 'None'}
+        record.side_effects.length ? record.side_effects.join(', ') : 'None'
+      }
 `
-  )
-  .join('\n')}
+    )
+    .join('\n')
 
-Based on the above information, provide a concise, professional insight that follows this format:
-"You have given similar medication to patients with similar symptoms in the past, and it had [summarize effectiveness and outcomes]. [Add any relevant observations about dosage differences or side effects]."
+  const prompt = `
+You are a medical AI assistant. Analyze the following patient's current prescription and past prescriptions.
 
-Be specific about medications, dosages, effectiveness, and side effects. If there are important differences, mention those too.
+Return ONLY one sentence like:
+"A similar diagnosis/dose was given to the patient before and it resulted in xyz effectivenessand side effects of xyz."
+
+Do not add any extra text or explanation.
+
+--- CURRENT PRESCRIPTION ---
+Diagnosis: ${diagnosis}
+Medications: ${currentMedText}
+
+--- PAST RECORDS ---
+${pastText}
 `
 
   try {
-    // Generate content using the model
-    const response = await model({
+    const response = await ai.models.generateContent({
       model: 'gemini-2.0-flash',
-      contents: prompt,
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
     })
 
     return response.text
-  } catch (error) {
-    console.error('Error calling Google Generative AI:', error)
-    return 'Unable to analyze prescription history due to an AI service error.'
+  } catch (err) {
+    console.error('Gemini AI insight error:', err)
+    return 'Failed to generate insight.'
   }
 }
+
+// module.exports = generatePrescriptionInsight
+
+// module.exports = generatePrescriptionInsight
 
 // Express route implementation
 router.post('/prescription-analysis/:email', async (req, res) => {
