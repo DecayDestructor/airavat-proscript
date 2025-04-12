@@ -1,8 +1,7 @@
-// CreatePrescription.jsx
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
-import Sidebar from '../components/Sidebar' // Assuming Sidebar component is in the same directory
+import Sidebar from '../components/Sidebar' 
 import Header from '../components/Header'
 
 const CreatePrescription = () => {
@@ -12,6 +11,8 @@ const CreatePrescription = () => {
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
   const [uploadedImage, setUploadedImage] = useState(null)
+  const [analysisResult, setAnalysisResult] = useState(null)
+  const [analyzing, setAnalyzing] = useState(false)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -27,6 +28,9 @@ const CreatePrescription = () => {
     dosages: '',
     medication_end_date: '',
     notes: '',
+    allergy: '',
+    frequency: '',
+    pregnant: 'No',
     prescriptionImage: null,
   })
 
@@ -43,6 +47,65 @@ const CreatePrescription = () => {
       setFormData({ ...formData, prescriptionImage: file })
       setUploadedImage(URL.createObjectURL(file))
     }
+  }
+
+  // Request prescription analysis
+  const handleAnalyzeClick = async () => {
+    if (!formData.email || !formData.symptoms || !formData.diagnosis || !formData.medicines) {
+      setError('Please fill in patient email, symptoms, diagnosis, and medicines before analyzing')
+      return
+    }
+
+    setAnalyzing(true)
+    setError(null)
+
+    try {
+      const symptoms = typeof formData.symptoms === 'string'
+        ? formData.symptoms.split(',').map((s) => s.trim())
+        : formData.symptoms
+
+      const medicines = typeof formData.medicines === 'string'
+        ? formData.medicines.split(',').map((m) => m.trim())
+        : formData.medicines
+
+      const dosages = typeof formData.dosages === 'string'
+        ? formData.dosages.split(',').map((d) => d.trim()).map(Number)
+        : formData.dosages
+
+      // Create medication array for analysis
+      const currentPrescription = medicines.map((medicine, index) => ({
+        medicine,
+        dosage: dosages[index] || 0,
+      }))
+
+      const response = await axios.post(
+        `http://localhost:3000/prescription-analysis/${formData.email}`,
+        {
+          currentPrescription,
+          symptoms,
+          diagnosis: formData.diagnosis
+        }
+      )
+
+      setAnalysisResult(response.data)
+    } catch (err) {
+      console.error('Error analyzing prescription:', err)
+      setError(
+        err.response?.data?.message ||
+        err.message ||
+        'An error occurred while analyzing the prescription'
+      )
+    } finally {
+      setAnalyzing(false)
+    }
+  }
+
+  // Handle send via email
+  const handleSendEmail = () => {
+    // This would typically connect to your backend email service
+    alert('Prescription email functionality would be implemented here')
+    // In a real implementation, you would call your backend endpoint
+    // that handles sending emails with the prescription data
   }
 
   // Handle form submission
@@ -85,6 +148,8 @@ const CreatePrescription = () => {
         dosages,
         medication_end_date: formData.medication_end_date,
         notes: formData.notes,
+        allergy: formData.allergy,
+        frequency: formData.frequency,
         side_effects: [], // Initialize as empty array as per backend requirements
       }
 
@@ -96,11 +161,6 @@ const CreatePrescription = () => {
           'Prescription image attached:',
           formData.prescriptionImage.name
         )
-
-        // Example of how you might handle image upload:
-        // const imageFormData = new FormData();
-        // imageFormData.append('prescriptionImage', formData.prescriptionImage);
-        // await axios.post('http://localhost:3000/upload-prescription-image', imageFormData);
       }
       console.log(prescriptionData)
 
@@ -127,9 +187,13 @@ const CreatePrescription = () => {
         dosages: '',
         medication_end_date: '',
         notes: '',
+        allergy: '',
+        frequency: '',
+        pregnant: 'No',
         prescriptionImage: null,
       })
       setUploadedImage(null)
+      setAnalysisResult(null)
     } catch (err) {
       console.error('Error creating prescription:', err)
       setError(
@@ -170,6 +234,19 @@ const CreatePrescription = () => {
             {error && (
               <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
                 {error}
+              </div>
+            )}
+
+            {/* AI Analysis Result */}
+            {analysisResult && analysisResult.ai_insight && (
+              <div className="mb-4 p-4 bg-blue-50 border border-blue-300 text-blue-800 rounded">
+                <h3 className="font-bold mb-2">AI Prescription Analysis:</h3>
+                <p>{analysisResult.ai_insight}</p>
+                {analysisResult.similar_cases && analysisResult.similar_cases.length > 0 && (
+                  <div className="mt-2">
+                    <p className="font-medium">Based on {analysisResult.similar_cases.length} similar case(s)</p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -246,7 +323,7 @@ const CreatePrescription = () => {
                     </div>
                   </div>
 
-                  {/* Added Phone and Email Fields */}
+                  {/* Phone and Email Fields */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="mb-4">
                       <label
@@ -263,6 +340,7 @@ const CreatePrescription = () => {
                         placeholder="Phone Number"
                         value={formData.phone}
                         onChange={handleChange}
+                        required
                       />
                     </div>
 
@@ -281,10 +359,12 @@ const CreatePrescription = () => {
                         placeholder="Email Address"
                         value={formData.email}
                         onChange={handleChange}
+                        required
                       />
                     </div>
                   </div>
                 </div>
+                
                 {/* Medical Information */}
                 <div className="col-span-2">
                   <h2 className="text-lg font-medium text-gray-900 mb-4">
@@ -328,6 +408,48 @@ const CreatePrescription = () => {
                       required
                     />
                   </div>
+                  
+                  {/* Added allergies field */}
+                  <div className="mb-4">
+                    <label
+                      className="block text-gray-700 text-sm font-bold mb-2"
+                      htmlFor="allergy"
+                    >
+                      Allergies
+                    </label>
+                    <input
+                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-teal-500"
+                      id="allergy"
+                      name="allergy"
+                      type="text"
+                      placeholder="Enter any known allergies"
+                      value={formData.allergy}
+                      onChange={handleChange}
+                    />
+                  </div>
+                  
+                  {/* Added pregnancy field */}
+                  {formData.sex === 'Female' && (
+                    <div className="mb-4">
+                      <label
+                        className="block text-gray-700 text-sm font-bold mb-2"
+                        htmlFor="pregnant"
+                      >
+                        Pregnancy Status
+                      </label>
+                      <select
+                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-teal-500"
+                        id="pregnant"
+                        name="pregnant"
+                        value={formData.pregnant}
+                        onChange={handleChange}
+                      >
+                        <option value="No">Not Pregnant</option>
+                        <option value="Yes">Pregnant</option>
+                        <option value="Unknown">Unknown</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
 
                 {/* Medication Information */}
@@ -377,6 +499,26 @@ const CreatePrescription = () => {
                         Note: Dosages exceeding 100mg will be capped at 100mg
                       </p>
                     </div>
+                  </div>
+                  
+                  {/* Added frequency field */}
+                  <div className="mb-4">
+                    <label
+                      className="block text-gray-700 text-sm font-bold mb-2"
+                      htmlFor="frequency"
+                    >
+                      Frequency*
+                    </label>
+                    <input
+                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-teal-500"
+                      id="frequency"
+                      name="frequency"
+                      type="text"
+                      placeholder="Medication frequency (e.g., Twice daily, After meals)"
+                      value={formData.frequency}
+                      onChange={handleChange}
+                      required
+                    />
                   </div>
 
                   <div className="mb-4">
@@ -474,22 +616,48 @@ const CreatePrescription = () => {
                 </div>
               </div>
 
-              {/* Submit Button */}
-              <div className="flex items-center justify-end mt-6">
-                <button
-                  className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded mr-2 focus:outline-none focus:shadow-outline"
-                  type="button"
-                  onClick={() => navigate(-1)}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-                  type="submit"
-                  disabled={loading}
-                >
-                  {loading ? 'Creating...' : 'Create Prescription'}
-                </button>
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center justify-between mt-6">
+                <div className="mb-4 md:mb-0">
+                  {/* Analyze Button */}
+                  <button
+                    className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mr-2"
+                    type="button"
+                    onClick={handleAnalyzeClick}
+                    disabled={analyzing || !formData.email || !formData.symptoms || !formData.diagnosis}
+                  >
+                    {analyzing ? 'Analyzing...' : 'Analyze Prescription'}
+                  </button>
+                  
+                  {/* Send Email Button */}
+                  <button
+                    className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                    type="button"
+                    onClick={handleSendEmail}
+                  >
+                    Send via Email
+                  </button>
+                </div>
+                
+                <div>
+                  {/* Cancel Button */}
+                  <button
+                    className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded mr-2 focus:outline-none focus:shadow-outline"
+                    type="button"
+                    onClick={() => navigate(-1)}
+                  >
+                    Cancel
+                  </button>
+                  
+                  {/* Submit Button */}
+                  <button
+                    className="bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                    type="submit"
+                    disabled={loading}
+                  >
+                    {loading ? 'Creating...' : 'Create Prescription'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
