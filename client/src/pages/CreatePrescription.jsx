@@ -489,7 +489,7 @@ const CreatePrescription = () => {
                         className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-teal-500"
                         id="dosages"
                         name="dosages"
-                        type="text"
+                        type="number"
                         placeholder="Enter dosages in mg separated by commas (e.g., 500, 200)"
                         value={formData.dosages}
                         onChange={handleChange}
@@ -513,8 +513,8 @@ const CreatePrescription = () => {
                       className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-teal-500"
                       id="frequency"
                       name="frequency"
-                      type="text"
-                      placeholder="Medication frequency (e.g., Twice daily, After meals)"
+                      type="number"
+                      placeholder="Medication frequency (e.g., 2 per day)"
                       value={formData.frequency}
                       onChange={handleChange}
                       required
@@ -621,7 +621,7 @@ const CreatePrescription = () => {
                 <div className="mb-4 md:mb-0">
                   {/* Analyze Button */}
                   <button
-                    className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mr-2"
+                    className="bg-teal-500 hover:bg-teal-800 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mr-2"
                     type="button"
                     onClick={handleAnalyzeClick}
                     disabled={analyzing || !formData.email || !formData.symptoms || !formData.diagnosis}
@@ -631,7 +631,7 @@ const CreatePrescription = () => {
                   
                   {/* Send Email Button */}
                   <button
-                    className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                    className="bg-teal-500 hover:bg-teal-800 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
                     type="button"
                     onClick={handleSendEmail}
                   >
