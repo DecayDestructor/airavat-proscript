@@ -1,8 +1,12 @@
 // Login.jsx
+// Login.jsx
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom'; // Import for redirection after login
 
 const Login = () => {
+  // For navigation after successful login
+  const navigate = useNavigate();
+  
   // State for form and tabs
   const [activeTab, setActiveTab] = useState('login');
   const [showPassword, setShowPassword] = useState(false);
@@ -10,6 +14,16 @@ const Login = () => {
     email: '',
     password: ''
   });
+  // State for login error
+  const [loginError, setLoginError] = useState('');
+   // Hardcoded doctor ID
+   const DOCTOR_ID = "67fa571f278672962c7d12e8";
+
+  // Hardcoded credentials
+  const validCredentials = {
+    email: 'doctor@example.com',
+    password: 'password123'
+  };
 
   // State for typewriter effect
   const [currentText, setCurrentText] = useState('');
@@ -29,13 +43,36 @@ const Login = () => {
       ...prevData,
       [name]: value
     }));
+    // Clear error when user starts typing again
+    if (loginError) {
+      setLoginError('');
+    }
   };
 
   // Handle form submission
   const handleSubmit = (e) => {
     e.preventDefault();
     console.log('Form submitted:', formData);
-    // Add your authentication logic here
+    
+    // For demo purposes, consider any login attempt as successful
+    if (activeTab === 'login') {
+      console.log('Login successful!');
+      
+      // Store the doctor ID in localStorage/sessionStorage for later use
+      localStorage.setItem('doctorId', DOCTOR_ID);
+      
+      // Redirect to doctor verification page
+      navigate('/doctor-verification');
+    } else {
+      // For signup, simulate success
+      console.log('Signup successful!');
+      // Switch to login tab
+      setActiveTab('login');
+      // Reset form
+      setFormData({ email: '', password: '' });
+      // Show a success message
+      alert('Account created successfully! Please login to continue.');
+    }
   };
 
   // Typewriter effect
@@ -89,7 +126,10 @@ const Login = () => {
         <div className="w-full max-w-md bg-white rounded-lg p-6 border-2 border-teal-500 shadow-lg">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold text-teal-600">Doctor Account</h2>
-           
+            {/* Demo credentials helper */}
+            <div className="text-xs text-gray-500 bg-gray-100 p-1 rounded">
+              Demo: doctor@example.com / password123
+            </div>
           </div>
 
           {/* Tabs */}
@@ -115,6 +155,13 @@ const Login = () => {
               SIGN UP
             </button>
           </div>
+
+          {/* Login Error Message */}
+          {loginError && (
+            <div className="mb-4 bg-red-100 text-red-700 p-3 rounded">
+              {loginError}
+            </div>
+          )}
 
           {/* Login Form */}
           {activeTab === 'login' && (
@@ -170,6 +217,7 @@ const Login = () => {
                     onChange={handleChange}
                     className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     required
+                    placeholder="doctor@example.com"
                   />
                 </div>
               </div>
@@ -192,6 +240,7 @@ const Login = () => {
                     onChange={handleChange}
                     className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     required
+                    placeholder="password123"
                   />
                   <button
                     type="button"
@@ -351,7 +400,9 @@ const Login = () => {
           )}
         </div>
       </div>
-      
+
+
+
       {/* Right Panel - Info and Features */}
 <div className="w-1/2 bg-teal-600 text-white p-12 flex flex-col">
   <div className="flex-1">

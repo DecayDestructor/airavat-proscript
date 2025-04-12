@@ -3,20 +3,11 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 
 import Login from './pages/Login';
 import DoctorVerification from './pages/VerifyDoctor';
+import Dashboard from './pages/Dashboard';
+import CreatePrescription from './pages/CreatePrescription';
+import OngoingPrescriptions from './pages/OngoingPrescription';
 
 
-
-
-const ProtectedRoute = ({ children }) => {
-  return (
-    <>
-      <SignedIn>{children}</SignedIn>
-      <SignedOut>
-        <RedirectToSignIn />
-      </SignedOut>
-    </>
-  );
-};
 
 function App() {
   return (
@@ -28,21 +19,15 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/sign-in/*" element={<Login />} />
           <Route path="/sign-up/*" element={<Login />} />
+          <Route path="/dashboard" element={<Dashboard/>}></Route>
+          <Route path="/create-prescription" element={<CreatePrescription/>}></Route>
+          <Route path ="/ongoing-prescriptions" element={<OngoingPrescriptions/>}> </Route>
           
-          {/* Protected routes */}
-          <Route 
-            path="/doctor-verification" 
-            element={
-              <ProtectedRoute>
-                <DoctorVerification />
-              </ProtectedRoute>
-            } 
-          />
+         
+          <Route path="/doctor-verification" 
+            element={<DoctorVerification />}/>
           
-          {/* Add your other routes here */}
-          
-          {/* Fallback route */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+        
         </Routes>
       </Router>
    
