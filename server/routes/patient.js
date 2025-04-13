@@ -102,6 +102,7 @@ router.post('/create-prescript', async (req, res) => {
       patient_email: email,
       patient_phone: phone,
       allergy,
+      
     })
 
     await newPrescript.save()

@@ -12,6 +12,7 @@ const CreatePrescription = () => {
   const [success, setSuccess] = useState(false)
   const [uploadedImage, setUploadedImage] = useState(null)
   const [analysisResult, setAnalysisResult] = useState(null)
+  const [mlAnalysisResult, setMlAnalysisResult] = useState(null)
   const [analyzing, setAnalyzing] = useState(false)
 
   // Form state
@@ -49,162 +50,220 @@ const CreatePrescription = () => {
     }
   }
 
+  // Separate ML Analysis function for backend compatibility
   const handleMLAnalysis = async () => {
-    console.log(
-      formData.medicines,
-      formData.dosages,
-      formData.frequency,
-      formData.allergy
-    )
-
-    const payload = {
-      patient_name: formData.name,
-      age: formData.age,
-      sex: formData.sex,
-      condition: formData.diagnosis,
-      drugs: formData.medicines, // Convert array of strings or numbers to a string
-      dosage: formData.dosages, // Convert array of numbers to string
-      frequency: formData.frequency, // Convert array of numbers to string
-      allergy: formData.allergy, // Convert array of strings to string
-      pregnancy_category: formData.pregnant ? 1 : 0, // Boolean to number (1 or 0)
-    }
-
-    // console.log(payload)
-
     try {
+      const payload = {
+        patient_name: formData.name,
+        age: parseInt(formData.age) || 0,
+        sex: formData.sex,
+        condition: formData.diagnosis,
+        drugs: formData.medicines, 
+        dosage: formData.dosages, 
+        frequency: formData.frequency, 
+        allergy: formData.allergy || '', 
+        pregnancy_category: formData.pregnant === 'Yes' ? 1 : 0,
+      }
+
+      console.log('Sending payload to ML service:', payload)
       const response = await axios.post(
         'http://localhost:8000/check-prescription',
         payload
       )
-      console.log(response.data)
+      console.log('ML analysis response:', response.data)
+      return response.data
     } catch (err) {
-      console.log('🔥 Axios error:', err.response?.data || err.message)
+      console.error('ML Analysis error:', err)
+      // Don't throw here, just return the error to handle in calling function
+      return { error: err.message || 'Error in ML analysis' }
     }
   }
-  // Request prescription analysis
-  const handleAnalyzeClick = async () => {
-    handleMLAnalysis()
-    if (
-      !formData.email ||
-      !formData.symptoms ||
-      !formData.diagnosis ||
-      !formData.medicines
-    ) {
-      setError(
-        'Please fill in patient email, symptoms, diagnosis, and medicines before analyzing'
-      )
-      return
-    }
 
-    setAnalyzing(true)
-    setError(null)
-    console.log('Starting prescription analysis...')
+  // Function to determine severity based on flag value
+  const getSeverityColor = (flag) => {
+    if (flag === 0) return 'text-green-600';
+    if (flag <= 0.3) return 'text-yellow-600';
+    if (flag <= 0.7) return 'text-orange-600';
+    return 'text-red-600';
+  }
 
+  // Function to get recommendation text color
+  const getRecommendationColor = (text) => {
+    if (text.includes('High')) return 'text-red-600';
+    if (text.includes('Low')) return 'text-blue-600';
+    return 'text-yellow-600';
+  }
+
+  // Request prescription analysis - DEBUGGING VERSION
+  const handleAnalyzeClick = async (e) => {
+    e.preventDefault() // Prevent form submission
+   
     try {
-      // Convert input strings to arrays
-      const symptoms =
-        typeof formData.symptoms === 'string'
-          ? formData.symptoms.split(',').map((s) => s.trim())
-          : formData.symptoms
-
-      const medicines =
-        typeof formData.medicines === 'string'
-          ? formData.medicines.split(',').map((m) => m.trim())
-          : formData.medicines
-
-      const dosages =
-        typeof formData.dosages === 'string'
-          ? formData.dosages
-              .split(',')
-              .map((d) => d.trim())
-              .map(Number)
-          : formData.dosages
-
-      const frequency =
-        typeof formData.frequency === 'string'
-          ? formData.frequency
-              .split(',')
-              .map((d) => d.trim())
-              .map(Number)
-          : formData.frequency
-
-      // Create medication array for analysis
-      const currentPrescription = []
-      for (let i = 0; i < medicines.length; i++) {
-        currentPrescription.push({
-          medicine: medicines[i],
-          dosage: dosages[i] || 0,
-          frequency: frequency[i] || 0,
-        })
+      // Clear previous errors and results
+      setError(null)
+      setMlAnalysisResult(null)
+      
+      // Validate required fields
+      if (!formData.email) {
+        setError('Please fill in email before analyzing')
+        return
       }
-
-      console.log('Sending data to server:', {
-        email: formData.email,
-        currentPrescription,
-        symptoms,
-        diagnosis: formData.diagnosis,
-      })
-
-      // Make the API call with explicit URL and error handling
-      const response = await axios.post(
-        `http://localhost:3000/prescription-analysis/${formData.email}`,
-        {
+      if (!formData.symptoms) {
+        setError('Please fill in symptoms before analyzing')
+        return
+      }
+      if (!formData.diagnosis) {
+        setError('Please fill in diagnosis before analyzing')
+        return
+      }
+      if (!formData.medicines) {
+        setError('Please fill in medicines before analyzing')
+        return
+      }  
+       
+      // Set analyzing state to true
+      setAnalyzing(true)
+      
+      // Only run ML analysis if all required data is available
+      if (formData.medicines && formData.dosages && formData.frequency) {
+        try {
+          const payload = {
+            patient_name: formData.name || 'Unknown',
+            age: parseInt(formData.age) || 0,
+            sex: formData.sex || 'Unknown',
+            condition: formData.diagnosis || 'Unknown',
+            drugs: formData.medicines || '', 
+            dosage: formData.dosages || '', 
+            frequency: formData.frequency || '', 
+            allergy: formData.allergy || '', 
+            pregnancy_category: formData.pregnant === 'Yes' ? 1 : 0,
+          }
+  
+          console.log('ML analysis payload:', JSON.stringify(payload))
+          
+          // Use a try/catch specifically for this API call
+          try {
+            console.log('Making API call to check-prescription')
+            const response = await axios.post(
+              'http://localhost:8000/check-prescription',
+              payload
+            )
+            console.log('ML analysis response:', response.data)
+            setMlAnalysisResult(response.data)
+          } catch (mlError) {
+            console.error('ML API call failed:', mlError.message)
+            setError(`ML Analysis Error: ${mlError.message}`)
+          }
+        } catch (prepError) {
+          console.error('Error preparing ML analysis:', prepError.message)
+          setError(`Error preparing data: ${prepError.message}`)
+        }
+      } else {
+        console.log('Skipping ML analysis due to missing data')
+        setError('Please provide medicines, dosages, and frequency to perform analysis')
+      }
+      
+      // Try the prescription analysis API regardless of ML results
+      console.log('Preparing data for prescription analysis')
+      try {
+        const symptoms = 
+          typeof formData.symptoms === 'string' && formData.symptoms
+            ? formData.symptoms.split(',').map((s) => s.trim())
+            : [formData.symptoms || 'Unknown']
+  
+        const medicines =
+          typeof formData.medicines === 'string' && formData.medicines
+            ? formData.medicines.split(',').map((m) => m.trim())
+            : [formData.medicines || 'Unknown']
+  
+        const dosages =
+          typeof formData.dosages === 'string' && formData.dosages
+            ? formData.dosages.split(',').map((d) => d.trim()).map(d => Number(d) || 0)
+            : [0]
+  
+        const frequency =
+          typeof formData.frequency === 'string' && formData.frequency
+            ? formData.frequency.split(',').map((f) => f.trim()).map(f => Number(f) || 0)
+            : [0]
+  
+        console.log('Converted data:')
+        console.log('- Symptoms:', JSON.stringify(symptoms))
+        console.log('- Medicines:', JSON.stringify(medicines))
+        console.log('- Dosages:', JSON.stringify(dosages))
+        console.log('- Frequency:', JSON.stringify(frequency))
+  
+        // Create medication array for analysis
+        const currentPrescription = []
+        if (Array.isArray(medicines)) {
+          for (let i = 0; i < medicines.length; i++) {
+            currentPrescription.push({
+              medicine: medicines[i],
+              dosage: (Array.isArray(dosages) && i < dosages.length) ? dosages[i] : 0,
+              frequency: (Array.isArray(frequency) && i < frequency.length) ? frequency[i] : 0,
+            })
+          }
+        }
+  
+        console.log('Current prescription data:', JSON.stringify(currentPrescription))
+        
+        // Prepare the API payload
+        const apiPayload = {
           currentPrescription,
           symptoms,
-          diagnosis: formData.diagnosis,
+          diagnosis: formData.diagnosis || 'Unknown',
         }
-      )
-
-      console.log('Received analysis response:', response.data)
-
-      if (response.data) {
-        setAnalysisResult(response.data)
-        // Add a visible notification about the result
-        if (response.data.ai_insight) {
-          alert(`Analysis complete: ${response.data.ai_insight}`)
-        } else {
-          alert('Analysis complete, but no insights were generated.')
+        
+        console.log('Prescription analysis payload:', JSON.stringify(apiPayload))
+        
+        // Make the prescription analysis API call
+        const apiUrl = `http://localhost:3000/prescription-analysis/${formData.email}`
+        console.log(`Making API call to: ${apiUrl}`)
+        
+        try {
+          const response = await axios.post(apiUrl, apiPayload)
+          console.log('Prescription analysis response received')
+          console.log('Response status:', response.status)
+          console.log('Response data:', JSON.stringify(response.data))
+  
+          if (response.data) {
+            setAnalysisResult(response.data)
+          } else {
+            console.log('Empty response from server')
+            setError('Received empty response from analysis server')
+          }
+        } catch (apiError) {
+          // Detailed API error handling
+          console.error('API call failed:', apiError.message)
+          
+          if (apiError.response) {
+            console.error('Server error status:', apiError.response.status)
+            console.error('Server error data:', JSON.stringify(apiError.response.data))
+            setError(`Server error (${apiError.response.status}): ${apiError.response.data?.message || JSON.stringify(apiError.response.data)}`)
+          } else if (apiError.request) {
+            console.error('No response received from server')
+            setError('Cannot connect to the server. Please check if the server is running at http://localhost:3000')
+          } else {
+            console.error('Request setup error:', apiError.message)
+            setError(`Error: ${apiError.message}`)
+          }
         }
-      } else {
-        setError('Received empty response from analysis server')
+      } catch (dataError) {
+        console.error('Error processing data:', dataError.message)
+        setError(`Error preparing data: ${dataError.message}`)
       }
-    } catch (err) {
-      console.error('Error analyzing prescription:', err)
-
-      // More detailed error logging
-      if (err.response) {
-        // The request was made and the server responded with a status code
-        // that falls out of the range of 2xx
-        console.error('Response error data:', err.response.data)
-        console.error('Response error status:', err.response.status)
-        console.error('Response error headers:', err.response.headers)
-        setError(
-          `Server error (${err.response.status}): ${
-            err.response.data.message || err.response.data
-          }`
-        )
-      } else if (err.request) {
-        // The request was made but no response was received
-        console.error('No response received:', err.request)
-        setError(
-          'No response received from server. Please check if the server is running.'
-        )
-      } else {
-        // Something happened in setting up the request that triggered an Error
-        console.error('Request setup error:', err.message)
-        setError(`Error: ${err.message}`)
-      }
+    } catch (outerError) {
+      console.error('Unexpected error in analyze process:', outerError.message)
+      setError(`Unexpected error: ${outerError.message}`)
     } finally {
+      console.log('Analysis process completed, setting analyzing state to false')
       setAnalyzing(false)
-      console.log('Analysis process completed')
     }
   }
+
   // Handle send via email
   const handleSendEmail = () => {
     // This would typically connect to your backend email service
     alert('Prescription email functionality would be implemented here')
-    // In a real implementation, you would call your backend endpoint
-    // that handles sending emails with the prescription data
   }
 
   // Handle form submission
@@ -227,23 +286,18 @@ const CreatePrescription = () => {
 
       const dosages =
         typeof formData.dosages === 'string'
-          ? formData.dosages
-              .split(',')
-              .map((d) => d.trim())
-              .map(Number)
+          ? formData.dosages.split(',').map((d) => d.trim()).map(Number)
           : formData.dosages
+          
       const frequency =
         typeof formData.frequency === 'string'
-          ? formData.frequency
-              .split(',')
-              .map((d) => d.trim())
-              .map(Number)
+          ? formData.frequency.split(',').map((d) => d.trim()).map(Number)
           : formData.frequency
 
       // Prepare form data for submission
       const prescriptionData = {
         name: formData.name,
-        age: parseInt(formData.age),
+        age: parseInt(formData.age) || 0,
         sex: formData.sex,
         phone: formData.phone,
         email: formData.email,
@@ -256,19 +310,16 @@ const CreatePrescription = () => {
         notes: formData.notes,
         allergy: formData.allergy,
         frequency,
+        pregnant: formData.pregnant === 'Yes',
         side_effects: [], // Initialize as empty array as per backend requirements
       }
 
       // If there's an image, handle it (you might want to upload it separately)
       if (formData.prescriptionImage) {
-        // For image upload, you would typically use FormData
-        // This is a placeholder - implement according to your backend requirements
-        console.log(
-          'Prescription image attached:',
-          formData.prescriptionImage.name
-        )
+        console.log('Prescription image attached:', formData.prescriptionImage.name)
       }
-      console.log(prescriptionData)
+      
+      console.log('Sending prescription data:', prescriptionData)
 
       // Make API call to create prescription using axios
       const response = await axios.post(
@@ -300,6 +351,7 @@ const CreatePrescription = () => {
       })
       setUploadedImage(null)
       setAnalysisResult(null)
+      setMlAnalysisResult(null)
     } catch (err) {
       console.error('Error creating prescription:', err)
       setError(
@@ -340,23 +392,6 @@ const CreatePrescription = () => {
             {error && (
               <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
                 {error}
-              </div>
-            )}
-
-            {/* AI Analysis Result */}
-            {analysisResult && analysisResult.ai_insight && (
-              <div className="mb-4 p-4 bg-teal-50 border border-teal-300 text-teal-800 rounded">
-                <h3 className="font-bold mb-2">AI Prescription Analysis:</h3>
-                <p>{analysisResult.ai_insight}</p>
-                {analysisResult.similar_cases &&
-                  analysisResult.similar_cases.length > 0 && (
-                    <div className="mt-2">
-                      <p className="font-medium">
-                        Based on {analysisResult.similar_cases.length} similar
-                        case(s)
-                      </p>
-                    </div>
-                  )}
               </div>
             )}
 
@@ -440,7 +475,7 @@ const CreatePrescription = () => {
                         className="block text-gray-700 text-sm font-bold mb-2"
                         htmlFor="phone"
                       >
-                        Phone Number *
+                        Phone Number*
                       </label>
                       <input
                         className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-teal-500"
@@ -459,7 +494,7 @@ const CreatePrescription = () => {
                         className="block text-gray-700 text-sm font-bold mb-2"
                         htmlFor="email"
                       >
-                        Email Address *
+                        Email Address*
                       </label>
                       <input
                         className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-teal-500"
@@ -624,7 +659,7 @@ const CreatePrescription = () => {
                       id="frequency"
                       name="frequency"
                       type="text"
-                      placeholder="Medication frequency (e.g., 2 per day)"
+                      placeholder="Medication frequency (e.g., 2, 3)"
                       value={formData.frequency}
                       onChange={handleChange}
                       required
@@ -729,17 +764,12 @@ const CreatePrescription = () => {
               {/* Action Buttons */}
               <div className="flex flex-wrap items-center justify-between mt-6">
                 <div className="mb-4 md:mb-0">
-                  {/* Analyze Button */}
+                  {/* Analyze Button - FIXED with proper onClick handler */}
                   <button
                     className="bg-teal-500 hover:bg-teal-800 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mr-2"
                     type="button"
                     onClick={handleAnalyzeClick}
-                    disabled={
-                      analyzing ||
-                      !formData.email ||
-                      !formData.symptoms ||
-                      !formData.diagnosis
-                    }
+                    disabled={analyzing}
                   >
                     {analyzing ? 'Analyzing...' : 'Analyze Prescription'}
                   </button>
@@ -775,6 +805,139 @@ const CreatePrescription = () => {
                 </div>
               </div>
             </form>
+
+            {/* Analysis Results Section - Moved to Bottom */}
+            {(mlAnalysisResult || analysisResult) && (
+              <div className="mt-8 mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                  Prescription Analysis Results
+                </h2>
+                
+                {/* ML Analysis Result */}
+                {mlAnalysisResult && (
+                  <div className="mb-4 p-4 bg-blue-50 border border-blue-300 text-blue-800 rounded">                
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <h4 className="font-semibold mb-2">ML Safety Assessment:</h4>
+                        <div className="bg-white p-3 rounded shadow-sm">
+                          <div className="flex justify-between items-center mb-2 border-b pb-1">
+                            <span className="font-medium">Overall Risk:</span>
+                            <span className={`font-bold ${getSeverityColor(mlAnalysisResult.flag)}`}>
+                              {(mlAnalysisResult.flag * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="flex justify-between">
+                              <span>Age Risk:</span>
+                              <span className={getSeverityColor(mlAnalysisResult.age_flag)}>
+                                {mlAnalysisResult.age_flag ? 'Yes' : 'No'}
+                              </span>
+                            </div>
+                            
+                            <div className="flex justify-between">
+                              <span>Allergy Risk:</span>
+                              <span className={getSeverityColor(mlAnalysisResult.allergy_flag)}>
+                                {mlAnalysisResult.allergy_flag ? 'Yes' : 'No'}
+                              </span>
+                            </div>
+                            
+                            <div className="flex justify-between">
+                              <span>Dosage Risk:</span>
+                              <span className={getSeverityColor(mlAnalysisResult.dosage_flag)}>
+                                {mlAnalysisResult.dosage_flag ? 'Yes' : 'No'}
+                              </span>
+                            </div>
+                            
+                            <div className="flex justify-between">
+                              <span>Drug Risk:</span>
+                              <span className={getSeverityColor(mlAnalysisResult.drugs_flag)}>
+                                {mlAnalysisResult.drugs_flag ? 'Yes' : 'No'}
+                              </span>
+                            </div>
+                            
+                            <div className="flex justify-between">
+                              <span>Frequency Risk:</span>
+                              <span className={getSeverityColor(mlAnalysisResult.frequency_flag)}>
+                                {mlAnalysisResult.frequency_flag ? 'Yes' : 'No'}
+                              </span>
+                            </div>
+                            
+                            <div className="flex justify-between">
+                              <span>Pregnancy Risk:</span>
+                              <span className={getSeverityColor(mlAnalysisResult.pregnancy_flag)}>
+                                {mlAnalysisResult.pregnancy_flag ? 'Yes' : 'No'}
+                              </span>
+                            </div>
+                            
+                            <div className="flex justify-between">
+                              <span>Sex-related Risk:</span>
+                              <span className={getSeverityColor(mlAnalysisResult.sex_flag)}>
+                                {mlAnalysisResult.sex_flag ? 'Yes' : 'No'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-semibold mb-2">Safety Recommendations:</h4>
+                        {mlAnalysisResult.messages && mlAnalysisResult.messages.length > 0 ? (
+                          <div className="bg-white p-3 rounded shadow-sm">
+                            <ul className="list-disc pl-5 space-y-2">
+                              {mlAnalysisResult.messages.map((message, index) => (
+                                <li key={index} className={getRecommendationColor(message)}>
+                                  {message}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : (
+                          <div className="bg-white p-3 rounded shadow-sm text-green-600">
+                            <p>No recommendations - all parameters within safe ranges.</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="mt-3 bg-white p-3 rounded shadow-sm">
+                      <h4 className="font-semibold mb-2">Clinical Significance:</h4>
+                      <p className="text-sm">
+                        {mlAnalysisResult.flag === 0 
+                          ? "The prescription appears to be safe with no significant risks detected."
+                          : mlAnalysisResult.flag < 0.3
+                            ? "Low risk detected. Consider the recommendations for optimizing this prescription."
+                            : mlAnalysisResult.flag < 0.7
+                              ? "Moderate risk detected. Carefully review the recommendations before proceeding."
+                              : "High risk detected. Strongly consider alternative medications or dosages."
+                        }
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Patient History Analysis */}
+                {analysisResult && (
+                  <div className={`mb-4 p-4 ${mlAnalysisResult ? 'bg-gray-50 border border-gray-300 text-gray-800' : 'bg-teal-50 border border-teal-300 text-teal-800'} rounded`}>
+                    <h4 className="font-semibold mb-2">Patient History Analysis:</h4>
+                    {analysisResult.ai_insight ? (
+                      <div>
+                        <p className="mb-2">{analysisResult.ai_insight}</p>
+                        {analysisResult.similar_cases && analysisResult.similar_cases.length > 0 && (
+                          <p className="text-sm text-gray-600">
+                            Based on {analysisResult.similar_cases.length} similar case(s) in patient history.
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-600">
+                        {analysisResult.message || "No similar historical prescriptions found for this patient."}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
