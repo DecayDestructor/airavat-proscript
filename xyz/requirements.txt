@@ -1,5 +1,10 @@
-openai
-python-dotenv
-pydantic
 fastapi
+uvicorn
+openai
 pandas
+pydantic
+pillow
+requests
+python-dotenv
+uvicorn
+python-multipart
