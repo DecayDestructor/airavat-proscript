@@ -1,7 +1,11 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi.responses import JSONResponse
 from schemas.prescription_schema import PrescriptionRequest, PrescriptionResponse
-from fastapi.middleware.cors import CORSMiddleware
-from services import (
+from schemas.schemas import ImageAnalysisRequest, ImageAnalysisResponse, ErrorResponse
+import os
+import logging
+import uuid
+from services.models import (
     age_check,
     sex_check,
     dosage_check,
@@ -9,23 +13,18 @@ from services import (
     drugs_check,
     pregnancy_check,
     allergy_check,
-    check,
+    check
 )
+from services.image_processor import ImageProcessor
+import json
+import os
 from utils.helpers import load_data
 
 # Initialize FastAPI app
 app = FastAPI()
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins
-    allow_credentials=True,
-    allow_methods=["*"],  # Allow all HTTP methods (GET, POST, etc.)
-    allow_headers=["*"],  # Allow all headers
-)
 
 # Load data once at startup
 ade, prescription = load_data()
-
 
 @app.post("/check-prescription", response_model=PrescriptionResponse)
 async def check_prescription(request: PrescriptionRequest):
@@ -79,7 +78,55 @@ async def check_prescription(request: PrescriptionRequest):
             pregnancy_flag=pregnancy_flag,
             allergy_flag=allergy_flag,
             flag=flag,
-            messages=messages,  # Include aggregated messages
+            messages=messages  # Include aggregated messages
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+processor = ImageProcessor()
+
+@app.post("/analyze-file")
+async def analyze_uploaded_file(file: UploadFile = File(...)):
+    try:
+        processor = ImageProcessor()
+        markdown_result = await processor.process_uploaded_file(file)
+        json_result = processor.generate_json(markdown_result)
+        return {
+            "markdown_output": markdown_result,
+            "json_output": json_result
+        }
+    except Exception as e:
+        logger.error(f"Error in endpoint: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/analyze-url", response_model=ImageAnalysisResponse)
+async def analyze_image_url(request: ImageAnalysisRequest):
+    """Analyze image from URL"""
+    try:
+        # Download image temporarily
+        temp_path = f"temp/{uuid.uuid4()}.jpg"
+        processor._download_image(request.image_url, temp_path)
+        
+        # Process image
+        markdown_result = processor.analyze_image(temp_path, request.prompt)
+        
+        # Generate JSON
+        json_result = processor.generate_json(markdown_result)
+        
+        # Clean up
+        os.remove(temp_path)
+        
+        return {
+            "markdown_output": markdown_result,
+            "json_output": json_result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.get("/")
+def read_root():
+    return {"message": "Medical Image Processor API"}
