@@ -35,6 +35,49 @@ const CreatePrescription = () => {
     prescriptionImage: null,
   })
 
+  const handleAnalyzeFile = async (file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      const response = await axios.post(
+        'http://localhost:8000/analyze-file',
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      )
+
+      console.log('Analysis result:', response.data)
+      return response.data
+    } catch (error) {
+      console.error(
+        'Error analyzing file:',
+        error.response?.data || error.message
+      )
+      throw error
+    }
+  }
+
+  const handleImageUpload = async (e) => {
+    console.log('handling')
+
+    const file = e.target.files[0]
+    if (!file) return
+
+    setUploadedImage(URL.createObjectURL(file))
+    setFormData((prev) => ({ ...prev, prescriptionImage: file }))
+
+    try {
+      const analysisResult = await handleAnalyzeFile(file)
+      populateFormDataFromAnalysis(analysisResult)
+    } catch (error) {
+      console.error('Failed to analyze image:', error)
+    }
+  }
+
   // Handle form input changes
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -42,12 +85,22 @@ const CreatePrescription = () => {
   }
 
   // Handle image upload
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      setFormData({ ...formData, prescriptionImage: file })
-      setUploadedImage(URL.createObjectURL(file))
-    }
+
+  const populateFormDataFromAnalysis = (data) => {
+    const json = data.json_output
+
+    setFormData((prev) => ({
+      ...prev,
+      name: json.patient_name?.toLowerCase() || '',
+      age: json.age?.toString() || '',
+      sex: json.sex?.toLowerCase() || 'male',
+      diagnosis: json.condition?.toLowerCase() || '',
+      medicines: json.drugs?.toLowerCase() || '',
+      dosages: json.dosage?.toLowerCase() || '',
+      frequency: json.frequency?.toLowerCase() || '',
+      allergy: json.allergy?.toLowerCase() || '',
+      pregnant: json.pregnancy_category === 1 ? 'Yes' : 'No',
+    }))
   }
 
   // Separate ML Analysis function for backend compatibility
@@ -58,10 +111,10 @@ const CreatePrescription = () => {
         age: parseInt(formData.age) || 0,
         sex: formData.sex,
         condition: formData.diagnosis,
-        drugs: formData.medicines, 
-        dosage: formData.dosages, 
-        frequency: formData.frequency, 
-        allergy: formData.allergy || '', 
+        drugs: formData.medicines,
+        dosage: formData.dosages,
+        frequency: formData.frequency,
+        allergy: formData.allergy || '',
         pregnancy_category: formData.pregnant === 'Yes' ? 1 : 0,
       }
 
@@ -81,80 +134,92 @@ const CreatePrescription = () => {
 
   // Function to determine severity based on flag value and critical conditions
   const getSeverityColor = (flag) => {
-    if (flag === 0) return 'text-green-600';
-    if (flag <= 0.3) return 'text-yellow-600';
-    if (flag <= 0.7) return 'text-orange-600';
-    return 'text-red-600';
+    if (flag === 0) return 'text-green-600'
+    if (flag <= 0.3) return 'text-yellow-600'
+    if (flag <= 0.7) return 'text-orange-600'
+    return 'text-red-600'
   }
 
   // Function to get recommendation text color
   const getRecommendationColor = (text) => {
-    if (text.includes('High')) return 'text-red-600';
-    if (text.includes('Low')) return 'text-blue-600';
-    if (text.includes("isn't compatible") || text.includes("not compatible")) return 'text-red-600 font-bold';
-    return 'text-yellow-600';
+    if (text.includes('High')) return 'text-red-600'
+    if (text.includes('Low')) return 'text-blue-600'
+    if (text.includes("isn't compatible") || text.includes('not compatible'))
+      return 'text-red-600 font-bold'
+    return 'text-yellow-600'
   }
 
   // Function to calculate overall risk level considering critical factors
   const getOverallRiskLevel = (mlData) => {
     // Check for critical contraindications first
-    if (mlData.messages && mlData.messages.some(msg => 
-        msg.toLowerCase().includes("isn't compatible with pregnancy") || 
-        msg.toLowerCase().includes("not compatible with pregnancy"))) {
+    if (
+      mlData.messages &&
+      mlData.messages.some(
+        (msg) =>
+          msg.toLowerCase().includes("isn't compatible with pregnancy") ||
+          msg.toLowerCase().includes('not compatible with pregnancy')
+      )
+    ) {
       return {
-        level: "High risk detected",
-        color: "text-red-600",
-        message: "Critical risk: Medication contraindicated with pregnancy. Consider alternative medications immediately."
-      };
+        level: 'High risk detected',
+        color: 'text-red-600',
+        message:
+          'Critical risk: Medication contraindicated with pregnancy. Consider alternative medications immediately.',
+      }
     }
-    
+
     // Check for allergies
     if (mlData.allergy_flag) {
       return {
-        level: "High risk detected",
-        color: "text-red-600",
-        message: "Critical risk: Potential allergic reaction. Consider alternative medications."
-      };
+        level: 'High risk detected',
+        color: 'text-red-600',
+        message:
+          'Critical risk: Potential allergic reaction. Consider alternative medications.',
+      }
     }
-    
+
     // Calculate based on flag value
     if (mlData.flag === 0) {
       return {
-        level: "No risk detected",
-        color: "text-green-600",
-        message: "The prescription appears to be safe with no significant risks detected."
-      };
+        level: 'No risk detected',
+        color: 'text-green-600',
+        message:
+          'The prescription appears to be safe with no significant risks detected.',
+      }
     } else if (mlData.flag < 0.3) {
       return {
-        level: "Low risk detected",
-        color: "text-yellow-600",
-        message: "Low risk detected. Consider the recommendations for optimizing this prescription."
-      };
+        level: 'Low risk detected',
+        color: 'text-yellow-600',
+        message:
+          'Low risk detected. Consider the recommendations for optimizing this prescription.',
+      }
     } else if (mlData.flag < 0.7) {
       return {
-        level: "Moderate risk detected",
-        color: "text-orange-600",
-        message: "Moderate risk detected. Carefully review the recommendations before proceeding."
-      };
+        level: 'Moderate risk detected',
+        color: 'text-orange-600',
+        message:
+          'Moderate risk detected. Carefully review the recommendations before proceeding.',
+      }
     } else {
       return {
-        level: "High risk detected",
-        color: "text-red-600",
-        message: "High risk detected. Strongly consider alternative medications or dosages."
-      };
+        level: 'High risk detected',
+        color: 'text-red-600',
+        message:
+          'High risk detected. Strongly consider alternative medications or dosages.',
+      }
     }
   }
 
   // Request prescription analysis - DEBUGGING VERSION
   const handleAnalyzeClick = async (e) => {
     e.preventDefault() // Prevent form submission
-   
+
     try {
       // Clear previous errors and results
       setError(null)
       setMlAnalysisResult(null)
       setAnalysisResult(null)
-      
+
       // Validate required fields
       if (!formData.email) {
         setError('Please fill in email before analyzing')
@@ -171,11 +236,11 @@ const CreatePrescription = () => {
       if (!formData.medicines) {
         setError('Please fill in medicines before analyzing')
         return
-      }  
-       
+      }
+
       // Set analyzing state to true
       setAnalyzing(true)
-      
+
       // Only run ML analysis if all required data is available
       if (formData.medicines && formData.dosages && formData.frequency) {
         try {
@@ -184,15 +249,15 @@ const CreatePrescription = () => {
             age: parseInt(formData.age) || 0,
             sex: formData.sex || 'Unknown',
             condition: formData.diagnosis || 'Unknown',
-            drugs: formData.medicines || '', 
-            dosage: formData.dosages || '', 
-            frequency: formData.frequency || '', 
-            allergy: formData.allergy || '', 
+            drugs: formData.medicines || '',
+            dosage: formData.dosages || '',
+            frequency: formData.frequency || '',
+            allergy: formData.allergy || '',
             pregnancy_category: formData.pregnant === 'Yes' ? 1 : 0,
           }
-  
+
           console.log('ML analysis payload:', JSON.stringify(payload))
-          
+
           // Use a try/catch specifically for this API call
           try {
             console.log('Making API call to check-prescription')
@@ -212,71 +277,89 @@ const CreatePrescription = () => {
         }
       } else {
         console.log('Skipping ML analysis due to missing data')
-        setError('Please provide medicines, dosages, and frequency to perform analysis')
+        setError(
+          'Please provide medicines, dosages, and frequency to perform analysis'
+        )
       }
-      
+
       // Try the prescription analysis API regardless of ML results
       console.log('Preparing data for prescription analysis')
       try {
-        const symptoms = 
+        const symptoms =
           typeof formData.symptoms === 'string' && formData.symptoms
             ? formData.symptoms.split(',').map((s) => s.trim())
             : [formData.symptoms || 'Unknown']
-  
+
         const medicines =
           typeof formData.medicines === 'string' && formData.medicines
             ? formData.medicines.split(',').map((m) => m.trim())
             : [formData.medicines || 'Unknown']
-  
+
         const dosages =
           typeof formData.dosages === 'string' && formData.dosages
-            ? formData.dosages.split(',').map((d) => d.trim()).map(d => Number(d) || 0)
+            ? formData.dosages
+                .split(',')
+                .map((d) => d.trim())
+                .map((d) => Number(d) || 0)
             : [0]
-  
+
         const frequency =
           typeof formData.frequency === 'string' && formData.frequency
-            ? formData.frequency.split(',').map((f) => f.trim()).map(f => Number(f) || 0)
+            ? formData.frequency
+                .split(',')
+                .map((f) => f.trim())
+                .map((f) => Number(f) || 0)
             : [0]
-  
+
         console.log('Converted data:')
         console.log('- Symptoms:', JSON.stringify(symptoms))
         console.log('- Medicines:', JSON.stringify(medicines))
         console.log('- Dosages:', JSON.stringify(dosages))
         console.log('- Frequency:', JSON.stringify(frequency))
-  
+
         // Create medication array for analysis
         const currentPrescription = []
         if (Array.isArray(medicines)) {
           for (let i = 0; i < medicines.length; i++) {
             currentPrescription.push({
               medicine: medicines[i],
-              dosage: (Array.isArray(dosages) && i < dosages.length) ? dosages[i] : 0,
-              frequency: (Array.isArray(frequency) && i < frequency.length) ? frequency[i] : 0,
+              dosage:
+                Array.isArray(dosages) && i < dosages.length ? dosages[i] : 0,
+              frequency:
+                Array.isArray(frequency) && i < frequency.length
+                  ? frequency[i]
+                  : 0,
             })
           }
         }
-  
-        console.log('Current prescription data:', JSON.stringify(currentPrescription))
-        
+
+        console.log(
+          'Current prescription data:',
+          JSON.stringify(currentPrescription)
+        )
+
         // Prepare the API payload
         const apiPayload = {
           currentPrescription,
           symptoms,
           diagnosis: formData.diagnosis || 'Unknown',
         }
-        
-        console.log('Prescription analysis payload:', JSON.stringify(apiPayload))
-        
+
+        console.log(
+          'Prescription analysis payload:',
+          JSON.stringify(apiPayload)
+        )
+
         // Make the prescription analysis API call
         const apiUrl = `http://localhost:3000/prescription-analysis/${formData.email}`
         console.log(`Making API call to: ${apiUrl}`)
-        
+
         try {
           const response = await axios.post(apiUrl, apiPayload)
           console.log('Prescription analysis response received')
           console.log('Response status:', response.status)
           console.log('Response data:', JSON.stringify(response.data))
-  
+
           if (response.data) {
             setAnalysisResult(response.data)
           } else {
@@ -286,14 +369,24 @@ const CreatePrescription = () => {
         } catch (apiError) {
           // Detailed API error handling
           console.error('API call failed:', apiError.message)
-          
+
           if (apiError.response) {
             console.error('Server error status:', apiError.response.status)
-            console.error('Server error data:', JSON.stringify(apiError.response.data))
-            setError(`Server error (${apiError.response.status}): ${apiError.response.data?.message || JSON.stringify(apiError.response.data)}`)
+            console.error(
+              'Server error data:',
+              JSON.stringify(apiError.response.data)
+            )
+            setError(
+              `Server error (${apiError.response.status}): ${
+                apiError.response.data?.message ||
+                JSON.stringify(apiError.response.data)
+              }`
+            )
           } else if (apiError.request) {
             console.error('No response received from server')
-            setError('Cannot connect to the server. Please check if the server is running at http://localhost:3000')
+            setError(
+              'Cannot connect to the server. Please check if the server is running at http://localhost:3000'
+            )
           } else {
             console.error('Request setup error:', apiError.message)
             setError(`Error: ${apiError.message}`)
@@ -307,7 +400,9 @@ const CreatePrescription = () => {
       console.error('Unexpected error in analyze process:', outerError.message)
       setError(`Unexpected error: ${outerError.message}`)
     } finally {
-      console.log('Analysis process completed, setting analyzing state to false')
+      console.log(
+        'Analysis process completed, setting analyzing state to false'
+      )
       setAnalyzing(false)
     }
   }
@@ -338,12 +433,18 @@ const CreatePrescription = () => {
 
       const dosages =
         typeof formData.dosages === 'string'
-          ? formData.dosages.split(',').map((d) => d.trim()).map(Number)
+          ? formData.dosages
+              .split(',')
+              .map((d) => d.trim())
+              .map(Number)
           : formData.dosages
-          
+
       const frequency =
         typeof formData.frequency === 'string'
-          ? formData.frequency.split(',').map((d) => d.trim()).map(Number)
+          ? formData.frequency
+              .split(',')
+              .map((d) => d.trim())
+              .map(Number)
           : formData.frequency
 
       // Prepare form data for submission
@@ -368,9 +469,12 @@ const CreatePrescription = () => {
 
       // If there's an image, handle it (you might want to upload it separately)
       if (formData.prescriptionImage) {
-        console.log('Prescription image attached:', formData.prescriptionImage.name)
+        console.log(
+          'Prescription image attached:',
+          formData.prescriptionImage.name
+        )
       }
-      
+
       console.log('Sending prescription data:', prescriptionData)
 
       // Make API call to create prescription using axios
@@ -864,123 +968,193 @@ const CreatePrescription = () => {
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">
                   Prescription Analysis Results
                 </h2>
-                
+
                 {/* ML Analysis Result */}
                 {mlAnalysisResult && (
-                  <div className="mb-4 p-4 bg-blue-50 border border-blue-300 text-blue-800 rounded">                
+                  <div className="mb-4 p-4 bg-blue-50 border border-blue-300 text-blue-800 rounded">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                       <div>
-                        <h4 className="font-semibold mb-2">ML Safety Assessment:</h4>
+                        <h4 className="font-semibold mb-2">
+                          ML Safety Assessment:
+                        </h4>
                         <div className="bg-white p-3 rounded shadow-sm">
                           <div className="flex justify-between items-center mb-2 border-b pb-1">
                             <span className="font-medium">Overall Risk:</span>
-                            <span className={`font-bold ${getSeverityColor(mlAnalysisResult.flag)}`}>
+                            <span
+                              className={`font-bold ${getSeverityColor(
+                                mlAnalysisResult.flag
+                              )}`}
+                            >
                               {(mlAnalysisResult.flag * 100).toFixed(1)}%
                             </span>
                           </div>
-                          
+
                           <div className="grid grid-cols-2 gap-2">
                             <div className="flex justify-between">
                               <span>Age Risk:</span>
-                              <span className={getSeverityColor(mlAnalysisResult.age_flag)}>
+                              <span
+                                className={getSeverityColor(
+                                  mlAnalysisResult.age_flag
+                                )}
+                              >
                                 {mlAnalysisResult.age_flag ? 'Yes' : 'No'}
                               </span>
                             </div>
-                            
+
                             <div className="flex justify-between">
                               <span>Allergy Risk:</span>
-                              <span className={getSeverityColor(mlAnalysisResult.allergy_flag)}>
+                              <span
+                                className={getSeverityColor(
+                                  mlAnalysisResult.allergy_flag
+                                )}
+                              >
                                 {mlAnalysisResult.allergy_flag ? 'Yes' : 'No'}
                               </span>
                             </div>
-                            
+
                             <div className="flex justify-between">
                               <span>Dosage Risk:</span>
-                              <span className={getSeverityColor(mlAnalysisResult.dosage_flag)}>
+                              <span
+                                className={getSeverityColor(
+                                  mlAnalysisResult.dosage_flag
+                                )}
+                              >
                                 {mlAnalysisResult.dosage_flag ? 'Yes' : 'No'}
                               </span>
                             </div>
-                            
+
                             <div className="flex justify-between">
                               <span>Drug Risk:</span>
-                              <span className={getSeverityColor(mlAnalysisResult.drugs_flag)}>
+                              <span
+                                className={getSeverityColor(
+                                  mlAnalysisResult.drugs_flag
+                                )}
+                              >
                                 {mlAnalysisResult.drugs_flag ? 'Yes' : 'No'}
                               </span>
                             </div>
-                            
+
                             <div className="flex justify-between">
                               <span>Frequency Risk:</span>
-                              <span className={getSeverityColor(mlAnalysisResult.frequency_flag)}>
+                              <span
+                                className={getSeverityColor(
+                                  mlAnalysisResult.frequency_flag
+                                )}
+                              >
                                 {mlAnalysisResult.frequency_flag ? 'Yes' : 'No'}
                               </span>
                             </div>
-                            
+
                             <div className="flex justify-between">
                               <span>Pregnancy Risk:</span>
-                              <span className={`${getSeverityColor(mlAnalysisResult.pregnancy_flag)} ${
-                                mlAnalysisResult.messages && 
-                                mlAnalysisResult.messages.some(msg => msg.toLowerCase().includes("pregnancy")) 
-                                  ? 'font-bold' : ''
-                              }`}>
+                              <span
+                                className={`${getSeverityColor(
+                                  mlAnalysisResult.pregnancy_flag
+                                )} ${
+                                  mlAnalysisResult.messages &&
+                                  mlAnalysisResult.messages.some((msg) =>
+                                    msg.toLowerCase().includes('pregnancy')
+                                  )
+                                    ? 'font-bold'
+                                    : ''
+                                }`}
+                              >
                                 {mlAnalysisResult.pregnancy_flag ? 'Yes' : 'No'}
                               </span>
                             </div>
-                            
+
                             <div className="flex justify-between">
                               <span>Sex-related Risk:</span>
-                              <span className={getSeverityColor(mlAnalysisResult.sex_flag)}>
+                              <span
+                                className={getSeverityColor(
+                                  mlAnalysisResult.sex_flag
+                                )}
+                              >
                                 {mlAnalysisResult.sex_flag ? 'Yes' : 'No'}
                               </span>
                             </div>
                           </div>
                         </div>
                       </div>
-                      
+
                       <div>
-                        <h4 className="font-semibold mb-2">Safety Recommendations:</h4>
-                        {mlAnalysisResult.messages && mlAnalysisResult.messages.length > 0 ? (
+                        <h4 className="font-semibold mb-2">
+                          Safety Recommendations:
+                        </h4>
+                        {mlAnalysisResult.messages &&
+                        mlAnalysisResult.messages.length > 0 ? (
                           <div className="bg-white p-3 rounded shadow-sm">
                             <ul className="list-disc pl-5 space-y-2">
-                              {mlAnalysisResult.messages.map((message, index) => (
-                                <li key={index} className={getRecommendationColor(message)}>
-                                  {message}
-                                </li>
-                              ))}
+                              {mlAnalysisResult.messages.map(
+                                (message, index) => (
+                                  <li
+                                    key={index}
+                                    className={getRecommendationColor(message)}
+                                  >
+                                    {message}
+                                  </li>
+                                )
+                              )}
                             </ul>
                           </div>
                         ) : (
                           <div className="bg-white p-3 rounded shadow-sm text-green-600">
-                            <p>No recommendations - all parameters within safe ranges.</p>
+                            <p>
+                              No recommendations - all parameters within safe
+                              ranges.
+                            </p>
                           </div>
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="mt-3 bg-white p-3 rounded shadow-sm">
-                      <h4 className="font-semibold mb-2">Clinical Significance:</h4>
+                      <h4 className="font-semibold mb-2">
+                        Clinical Significance:
+                      </h4>
                       {(() => {
                         // Check for pregnancy contraindication
-                        const hasPregnancyContraindication = mlAnalysisResult.messages && 
-                          mlAnalysisResult.messages.some(msg => 
-                            msg.toLowerCase().includes("isn't compatible with pregnancy") || 
-                            msg.toLowerCase().includes("not compatible with pregnancy"));
-                        
+                        const hasPregnancyContraindication =
+                          mlAnalysisResult.messages &&
+                          mlAnalysisResult.messages.some(
+                            (msg) =>
+                              msg
+                                .toLowerCase()
+                                .includes("isn't compatible with pregnancy") ||
+                              msg
+                                .toLowerCase()
+                                .includes('not compatible with pregnancy')
+                          )
+
                         // Get risk assessment based on factors and flags
-                        const riskAssessment = getOverallRiskLevel(mlAnalysisResult);
-                        
+                        const riskAssessment =
+                          getOverallRiskLevel(mlAnalysisResult)
+
                         return (
                           <div>
-                            <p className={`font-medium ${hasPregnancyContraindication ? "text-red-600" : riskAssessment.color} mb-2`}>
-                              {hasPregnancyContraindication ? "Critical risk detected" : riskAssessment.level} 
-                              ({hasPregnancyContraindication ? "95.0" : (mlAnalysisResult.flag * 100).toFixed(1)}% risk)
+                            <p
+                              className={`font-medium ${
+                                hasPregnancyContraindication
+                                  ? 'text-red-600'
+                                  : riskAssessment.color
+                              } mb-2`}
+                            >
+                              {hasPregnancyContraindication
+                                ? 'Critical risk detected'
+                                : riskAssessment.level}
+                              (
+                              {hasPregnancyContraindication
+                                ? '95.0'
+                                : (mlAnalysisResult.flag * 100).toFixed(1)}
+                              % risk)
                             </p>
                             <p className="text-sm">
-                              {hasPregnancyContraindication 
-                                ? "Medication contraindicated with pregnancy. Consider alternative medications immediately." 
+                              {hasPregnancyContraindication
+                                ? 'Medication contraindicated with pregnancy. Consider alternative medications immediately.'
                                 : riskAssessment.message}
                             </p>
                           </div>
-                        );
+                        )
                       })()}
                     </div>
                   </div>
@@ -988,20 +1162,31 @@ const CreatePrescription = () => {
 
                 {/* Patient History Analysis */}
                 {analysisResult && (
-                  <div className={`mb-4 p-4 ${mlAnalysisResult ? 'bg-gray-50 border border-gray-300 text-gray-800' : 'bg-teal-50 border border-teal-300 text-teal-800'} rounded`}>
-                    <h4 className="font-semibold mb-2">Patient History Analysis:</h4>
+                  <div
+                    className={`mb-4 p-4 ${
+                      mlAnalysisResult
+                        ? 'bg-gray-50 border border-gray-300 text-gray-800'
+                        : 'bg-teal-50 border border-teal-300 text-teal-800'
+                    } rounded`}
+                  >
+                    <h4 className="font-semibold mb-2">
+                      Patient History Analysis:
+                    </h4>
                     {analysisResult.ai_insight ? (
                       <div>
                         <p className="mb-2">{analysisResult.ai_insight}</p>
-                        {analysisResult.similar_cases && analysisResult.similar_cases.length > 0 && (
-                          <p className="text-sm text-gray-600">
-                            Based on {analysisResult.similar_cases.length} similar case(s) in patient history.
-                          </p>
-                        )}
+                        {analysisResult.similar_cases &&
+                          analysisResult.similar_cases.length > 0 && (
+                            <p className="text-sm text-gray-600">
+                              Based on {analysisResult.similar_cases.length}{' '}
+                              similar case(s) in patient history.
+                            </p>
+                          )}
                       </div>
                     ) : (
                       <p className="text-sm text-gray-600">
-                        {analysisResult.message || "No similar historical prescriptions found for this patient."}
+                        {analysisResult.message ||
+                          'No similar historical prescriptions found for this patient.'}
                       </p>
                     )}
                   </div>
