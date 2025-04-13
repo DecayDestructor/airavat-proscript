@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from schemas.prescription_schema import PrescriptionRequest, PrescriptionResponse
+from fastapi.middleware.cors import CORSMiddleware
 from services import (
     age_check,
     sex_check,
@@ -8,15 +9,23 @@ from services import (
     drugs_check,
     pregnancy_check,
     allergy_check,
-    check
+    check,
 )
 from utils.helpers import load_data
 
 # Initialize FastAPI app
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allow all headers
+)
 
 # Load data once at startup
 ade, prescription = load_data()
+
 
 @app.post("/check-prescription", response_model=PrescriptionResponse)
 async def check_prescription(request: PrescriptionRequest):
@@ -70,7 +79,7 @@ async def check_prescription(request: PrescriptionRequest):
             pregnancy_flag=pregnancy_flag,
             allergy_flag=allergy_flag,
             flag=flag,
-            messages=messages  # Include aggregated messages
+            messages=messages,  # Include aggregated messages
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

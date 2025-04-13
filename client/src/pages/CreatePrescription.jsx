@@ -49,8 +49,41 @@ const CreatePrescription = () => {
     }
   }
 
+  const handleMLAnalysis = async () => {
+    console.log(
+      formData.medicines,
+      formData.dosages,
+      formData.frequency,
+      formData.allergy
+    )
+
+    const payload = {
+      patient_name: formData.name,
+      age: formData.age,
+      sex: formData.sex,
+      condition: formData.diagnosis,
+      drugs: formData.medicines, // Convert array of strings or numbers to a string
+      dosage: formData.dosages, // Convert array of numbers to string
+      frequency: formData.frequency, // Convert array of numbers to string
+      allergy: formData.allergy, // Convert array of strings to string
+      pregnancy_category: formData.pregnant ? 1 : 0, // Boolean to number (1 or 0)
+    }
+
+    // console.log(payload)
+
+    try {
+      const response = await axios.post(
+        'http://localhost:8000/check-prescription',
+        payload
+      )
+      console.log(response.data)
+    } catch (err) {
+      console.log('🔥 Axios error:', err.response?.data || err.message)
+    }
+  }
   // Request prescription analysis
   const handleAnalyzeClick = async () => {
+    handleMLAnalysis()
     if (
       !formData.email ||
       !formData.symptoms ||
@@ -87,12 +120,21 @@ const CreatePrescription = () => {
               .map(Number)
           : formData.dosages
 
+      const frequency =
+        typeof formData.frequency === 'string'
+          ? formData.frequency
+              .split(',')
+              .map((d) => d.trim())
+              .map(Number)
+          : formData.frequency
+
       // Create medication array for analysis
       const currentPrescription = []
       for (let i = 0; i < medicines.length; i++) {
         currentPrescription.push({
           medicine: medicines[i],
           dosage: dosages[i] || 0,
+          frequency: frequency[i] || 0,
         })
       }
 
@@ -190,6 +232,13 @@ const CreatePrescription = () => {
               .map((d) => d.trim())
               .map(Number)
           : formData.dosages
+      const frequency =
+        typeof formData.frequency === 'string'
+          ? formData.frequency
+              .split(',')
+              .map((d) => d.trim())
+              .map(Number)
+          : formData.frequency
 
       // Prepare form data for submission
       const prescriptionData = {
@@ -206,7 +255,7 @@ const CreatePrescription = () => {
         medication_end_date: formData.medication_end_date,
         notes: formData.notes,
         allergy: formData.allergy,
-        frequency: formData.frequency,
+        frequency,
         side_effects: [], // Initialize as empty array as per backend requirements
       }
 
