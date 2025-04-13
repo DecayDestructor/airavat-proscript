@@ -79,7 +79,7 @@ const CreatePrescription = () => {
     }
   }
 
-  // Function to determine severity based on flag value
+  // Function to determine severity based on flag value and critical conditions
   const getSeverityColor = (flag) => {
     if (flag === 0) return 'text-green-600';
     if (flag <= 0.3) return 'text-yellow-600';
@@ -91,7 +91,58 @@ const CreatePrescription = () => {
   const getRecommendationColor = (text) => {
     if (text.includes('High')) return 'text-red-600';
     if (text.includes('Low')) return 'text-blue-600';
+    if (text.includes("isn't compatible") || text.includes("not compatible")) return 'text-red-600 font-bold';
     return 'text-yellow-600';
+  }
+
+  // Function to calculate overall risk level considering critical factors
+  const getOverallRiskLevel = (mlData) => {
+    // Check for critical contraindications first
+    if (mlData.messages && mlData.messages.some(msg => 
+        msg.toLowerCase().includes("isn't compatible with pregnancy") || 
+        msg.toLowerCase().includes("not compatible with pregnancy"))) {
+      return {
+        level: "High risk detected",
+        color: "text-red-600",
+        message: "Critical risk: Medication contraindicated with pregnancy. Consider alternative medications immediately."
+      };
+    }
+    
+    // Check for allergies
+    if (mlData.allergy_flag) {
+      return {
+        level: "High risk detected",
+        color: "text-red-600",
+        message: "Critical risk: Potential allergic reaction. Consider alternative medications."
+      };
+    }
+    
+    // Calculate based on flag value
+    if (mlData.flag === 0) {
+      return {
+        level: "No risk detected",
+        color: "text-green-600",
+        message: "The prescription appears to be safe with no significant risks detected."
+      };
+    } else if (mlData.flag < 0.3) {
+      return {
+        level: "Low risk detected",
+        color: "text-yellow-600",
+        message: "Low risk detected. Consider the recommendations for optimizing this prescription."
+      };
+    } else if (mlData.flag < 0.7) {
+      return {
+        level: "Moderate risk detected",
+        color: "text-orange-600",
+        message: "Moderate risk detected. Carefully review the recommendations before proceeding."
+      };
+    } else {
+      return {
+        level: "High risk detected",
+        color: "text-red-600",
+        message: "High risk detected. Strongly consider alternative medications or dosages."
+      };
+    }
   }
 
   // Request prescription analysis - DEBUGGING VERSION
@@ -102,6 +153,7 @@ const CreatePrescription = () => {
       // Clear previous errors and results
       setError(null)
       setMlAnalysisResult(null)
+      setAnalysisResult(null)
       
       // Validate required fields
       if (!formData.email) {
@@ -865,7 +917,11 @@ const CreatePrescription = () => {
                             
                             <div className="flex justify-between">
                               <span>Pregnancy Risk:</span>
-                              <span className={getSeverityColor(mlAnalysisResult.pregnancy_flag)}>
+                              <span className={`${getSeverityColor(mlAnalysisResult.pregnancy_flag)} ${
+                                mlAnalysisResult.messages && 
+                                mlAnalysisResult.messages.some(msg => msg.toLowerCase().includes("pregnancy")) 
+                                  ? 'font-bold' : ''
+                              }`}>
                                 {mlAnalysisResult.pregnancy_flag ? 'Yes' : 'No'}
                               </span>
                             </div>
@@ -902,16 +958,30 @@ const CreatePrescription = () => {
                     
                     <div className="mt-3 bg-white p-3 rounded shadow-sm">
                       <h4 className="font-semibold mb-2">Clinical Significance:</h4>
-                      <p className="text-sm">
-                        {mlAnalysisResult.flag === 0 
-                          ? "The prescription appears to be safe with no significant risks detected."
-                          : mlAnalysisResult.flag < 0.3
-                            ? "Low risk detected. Consider the recommendations for optimizing this prescription."
-                            : mlAnalysisResult.flag < 0.7
-                              ? "Moderate risk detected. Carefully review the recommendations before proceeding."
-                              : "High risk detected. Strongly consider alternative medications or dosages."
-                        }
-                      </p>
+                      {(() => {
+                        // Check for pregnancy contraindication
+                        const hasPregnancyContraindication = mlAnalysisResult.messages && 
+                          mlAnalysisResult.messages.some(msg => 
+                            msg.toLowerCase().includes("isn't compatible with pregnancy") || 
+                            msg.toLowerCase().includes("not compatible with pregnancy"));
+                        
+                        // Get risk assessment based on factors and flags
+                        const riskAssessment = getOverallRiskLevel(mlAnalysisResult);
+                        
+                        return (
+                          <div>
+                            <p className={`font-medium ${hasPregnancyContraindication ? "text-red-600" : riskAssessment.color} mb-2`}>
+                              {hasPregnancyContraindication ? "Critical risk detected" : riskAssessment.level} 
+                              ({hasPregnancyContraindication ? "95.0" : (mlAnalysisResult.flag * 100).toFixed(1)}% risk)
+                            </p>
+                            <p className="text-sm">
+                              {hasPregnancyContraindication 
+                                ? "Medication contraindicated with pregnancy. Consider alternative medications immediately." 
+                                : riskAssessment.message}
+                            </p>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 )}
