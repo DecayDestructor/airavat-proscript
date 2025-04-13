@@ -102,7 +102,6 @@ router.post('/create-prescript', async (req, res) => {
       patient_email: email,
       patient_phone: phone,
       allergy,
-      
     })
 
     await newPrescript.save()
@@ -295,12 +294,7 @@ router.post('/prescription-analysis/:email', async (req, res) => {
     // Find this patient's own previous records with similar symptoms/diagnosis
     const similarRecords = await PatientHistory.find({
       patient_email: email,
-      $or: [
-        { symptoms: { $in: symptoms } },
-        { diagnosis: { $regex: diagnosis, $options: 'i' } },
-      ],
       completed: true,
-      effectiveness: { $gte: 3 },
     })
       .sort({ effectiveness: -1 })
       .limit(3)
@@ -345,6 +339,27 @@ router.post('/prescription-analysis/:email', async (req, res) => {
     console.error('Error analyzing patient prescription:', err)
     res.status(500).json({ error: 'Server error' })
   }
+})
+
+//find all prescriptions for one hospital
+router.get('/get-prescripts-by-hospital/:id', async (req, res) => {
+  const { id } = req.params
+  try {
+    const allDoctors = await Doctor.find({ Hospital: id })
+    console.log(allDoctors)
+
+    const allPrescripts = []
+    for (let i = 0; i < allDoctors.length; i++) {
+      const prescripts = await PatientHistory.find({
+        doctor: allDoctors[i]._id,
+        completed: false,
+      })
+        .sort({ medication_end_date: -1 })
+        .exec()
+      allPrescripts.push(...prescripts)
+    }
+    res.status(200).json(allPrescripts)
+  } catch (e) {}
 })
 
 module.exports = router
